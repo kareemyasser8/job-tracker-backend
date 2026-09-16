@@ -11,8 +11,8 @@ async function bootstrap() {
   });
 
   const config = new DocumentBuilder()
-    .setTitle('Users API')
-    .setDescription('API for managing users')
+    .setTitle('Job Tracker API')
+    .setDescription('API for managing job applications')
     .setVersion('1.0')
     .build();
 
