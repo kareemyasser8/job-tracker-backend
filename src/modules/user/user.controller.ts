@@ -1,4 +1,15 @@
-import { Body, Controller, Get, Param, Post, Put, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  Put,
+  Query,
+} from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { PaginatedResponse } from '../../common/dto/paginated-response.dto.js';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto.js';
@@ -45,5 +56,14 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'User updated' })
   updateUser(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
     return this.userService.updateOne(id, updateUserDto);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a user' })
+  @ApiParam({ name: 'id', description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'User deleted' })
+  async deleteOne(@Param('id') id: string): Promise<void> {
+    return this.userService.deleteOne(id);
   }
 }

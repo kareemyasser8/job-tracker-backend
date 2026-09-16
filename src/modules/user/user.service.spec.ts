@@ -19,12 +19,26 @@ describe('UserService', () => {
   let service: UserService;
 
   const prismaService = {
+    $transaction: vi.fn(async (callback: (tx: any) => Promise<any>) => {
+      const tx = {
+        user: {
+          create: vi.fn(),
+        },
+        preference: {
+          create: vi.fn(),
+        },
+      };
+      return callback(tx);
+    }),
     user: {
       create: vi.fn(),
       findMany: vi.fn(),
       count: vi.fn(),
       findUnique: vi.fn(),
       update: vi.fn(),
+    },
+    preference: {
+      create: vi.fn(),
     },
   };
 
@@ -61,11 +75,20 @@ describe('UserService', () => {
         createdAt: new Date(),
       };
 
-      prismaService.user.create.mockResolvedValue(createdUser);
+      // Access the transaction client mock
+      const txMock = {
+        user: {
+          create: vi.fn().mockResolvedValue(createdUser),
+        },
+        preference: {
+          create: vi.fn().mockResolvedValue({}),
+        },
+      };
+      prismaService.$transaction.mockImplementation(async (callback) => callback(txMock));
 
       const result = await service.createUser(createUserDto);
 
-      expect(prismaService.user.create).toHaveBeenCalledWith({
+      expect(txMock.user.create).toHaveBeenCalledWith({
         data: {
           firstName: 'John',
           lastName: 'Doe',
@@ -73,6 +96,10 @@ describe('UserService', () => {
           passwordHash: 'password123',
         },
         select: USER_SELECT,
+      });
+
+      expect(txMock.preference.create).toHaveBeenCalledWith({
+        data: { userId: 'user-1' },
       });
 
       expect(result).toEqual(createdUser);

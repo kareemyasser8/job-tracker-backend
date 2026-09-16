@@ -3,6 +3,7 @@ import {
   Catch,
   ExceptionFilter,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 
 import { Response } from 'express';
@@ -10,9 +11,12 @@ import { Prisma } from '../../generated/prisma/client.js';
 
 @Catch(Prisma.PrismaClientKnownRequestError)
 export class PrismaExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(PrismaExceptionFilter.name);
   catch(exception: Prisma.PrismaClientKnownRequestError, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
+
+    this.logger.error(`Prisma error ${exception.code}: ${exception.message}`);
 
     switch (exception.code) {
       case 'P2002': {
@@ -29,6 +33,15 @@ export class PrismaExceptionFilter implements ExceptionFilter {
         response.status(HttpStatus.NOT_FOUND).json({
           statusCode: HttpStatus.NOT_FOUND,
           message: 'Record not found',
+        });
+        break;
+      }
+      case 'P2003': {
+        // Foreign key constraint violation — related records still exist
+        const field = exception.meta?.field_name as string | undefined;
+        response.status(HttpStatus.CONFLICT).json({
+          statusCode: HttpStatus.CONFLICT,
+          message: `Cannot delete: related records still reference this via ${field ?? 'a foreign key'}`,
         });
         break;
       }

@@ -10,20 +10,28 @@ export class UserService {
   constructor(private readonly prismaService: PrismaService) {}
 
   async createUser(createUserDto: CreateUserDto): Promise<User> {
-    return this.prismaService.user.create({
-      data: {
-        firstName: createUserDto.firstName,
-        lastName: createUserDto.lastName,
-        email: createUserDto.email,
-        passwordHash: createUserDto.password,
-      },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        createdAt: true,
-      },
+    return this.prismaService.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          firstName: createUserDto.firstName,
+          lastName: createUserDto.lastName,
+          email: createUserDto.email,
+          passwordHash: createUserDto.password,
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          createdAt: true,
+        },
+      });
+
+      await tx.preference.create({
+        data: { userId: user.id },
+      });
+
+      return user;
     });
   }
 
@@ -85,6 +93,12 @@ export class UserService {
         email: true,
         createdAt: true,
       },
+    });
+  }
+
+  async deleteOne(userId: string): Promise<void> {
+    await this.prismaService.user.delete({
+      where: { id: userId },
     });
   }
 }
