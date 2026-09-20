@@ -23,7 +23,8 @@
     "prisma:generate": "npx prisma generate",
     "prisma:migrate": "npx prisma migrate dev",
     "prisma:dev": "npx prisma dev",
-    "prisma:studio": "npx prisma studio"
+    "prisma:studio": "npx prisma studio",
+    "dev": "concurrently -n prisma,studio,nest \"pnpm prisma:dev\" \"pnpm prisma:studio\" \"pnpm start:dev\""
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
@@ -51,6 +52,7 @@
     "@types/node": "^24.0.0",
     "@types/supertest": "^7.0.0",
     "@vitest/coverage-v8": "^4.1.2",
+    "concurrently": "^10.0.5",
     "dotenv": "^17.4.2",
     "oxlint": "^1.58.0",
     "prettier": "^3.4.2",
