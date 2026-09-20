@@ -9,6 +9,8 @@ import { SourceModule } from './modules/source/source.module.js';
 import { TechnologyModule } from './modules/technology/technology.module.js';
 import { UserModule } from './modules/user/user.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { ApplicationModule } from './modules/application/application.module.js';
+import { ApplicationNoteModule } from './modules/application-note/application-note.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -28,6 +30,8 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     SourceModule,
     RoleModule,
     TechnologyModule,
+    ApplicationModule,
+    ApplicationNoteModule,
   ],
   controllers: [AppController],
   providers: [AppService],
