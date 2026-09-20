@@ -2,12 +2,13 @@ import { Module } from '@nestjs/common';
 import { createObserveModule } from '@nestjs/observe';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
-import { PrismaModule } from './prisma/prisma.module.js';
-import { UserModule } from './modules/user/user.module.js';
 import { CompanyModule } from './modules/company/company.module.js';
 import { PreferenceModule } from './modules/preference/preference.module.js';
-import { SourceModule } from './modules/source/source.module.js';
 import { RoleModule } from './modules/role/role.module.js';
+import { SourceModule } from './modules/source/source.module.js';
+import { TechnologyModule } from './modules/technology/technology.module.js';
+import { UserModule } from './modules/user/user.module.js';
+import { PrismaModule } from './prisma/prisma.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -26,6 +27,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     PreferenceModule,
     SourceModule,
     RoleModule,
+    TechnologyModule,
   ],
   controllers: [AppController],
   providers: [AppService],
