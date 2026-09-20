@@ -17,9 +17,22 @@ export class CompanyService {
         domain: createCompanyDto.domain,
         location: createCompanyDto.location,
         logoUrl: createCompanyDto.logoUrl,
-        isVerified: createCompanyDto.isVerified ?? false,
+        ownerId: createCompanyDto.ownerId,
+        isVerified: !createCompanyDto.ownerId,
       },
-    });
+      select: {
+        id: true,
+        ownerId: true,
+        name: true,
+        normalizedName: true,
+        domain: true,
+        location: true,
+        logoUrl: true,
+        isVerified: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    }) as unknown as Promise<Company>;
   }
 
   async findAll(

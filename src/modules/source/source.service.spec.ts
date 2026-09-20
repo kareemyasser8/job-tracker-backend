@@ -14,6 +14,15 @@ const SOURCE_SELECT = {
   updatedAt: true,
 } as const;
 
+const SOURCE_CREATE_SELECT = {
+  id: true,
+  ownerId: true,
+  name: true,
+  isVerified: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
 describe('SourceService', () => {
   let service: SourceService;
 
@@ -70,8 +79,9 @@ describe('SourceService', () => {
         data: {
           name: 'LinkedIn',
           ownerId: undefined,
+          isVerified: true,
         },
-        select: SOURCE_SELECT,
+        select: SOURCE_CREATE_SELECT,
       });
 
       expect(result).toEqual(createdSource);

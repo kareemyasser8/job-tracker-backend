@@ -14,11 +14,13 @@ export class SourceService {
       data: {
         name: createSourceDto.name,
         ownerId: createSourceDto.ownerId,
+        isVerified: !createSourceDto.ownerId,
       },
       select: {
         id: true,
         ownerId: true,
         name: true,
+        isVerified: true,
         createdAt: true,
         updatedAt: true,
       },

@@ -7,6 +7,7 @@ import { UserModule } from './modules/user/user.module.js';
 import { CompanyModule } from './modules/company/company.module.js';
 import { PreferenceModule } from './modules/preference/preference.module.js';
 import { SourceModule } from './modules/source/source.module.js';
+import { RoleModule } from './modules/role/role.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -24,6 +25,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     CompanyModule,
     PreferenceModule,
     SourceModule,
+    RoleModule,
   ],
   controllers: [AppController],
   providers: [AppService],

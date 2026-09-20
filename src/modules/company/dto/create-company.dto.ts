@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsBoolean, IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsBoolean, IsOptional, IsUUID } from 'class-validator';
 
 export class CreateCompanyDto {
   @ApiProperty({ example: 'Acme Inc.' })
@@ -24,6 +24,15 @@ export class CreateCompanyDto {
   @IsString()
   @IsOptional()
   logoUrl?: string;
+
+  @ApiPropertyOptional({
+    example: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+    description: 'Owner user ID',
+    format: 'uuid',
+  })
+  @IsOptional()
+  @IsUUID()
+  ownerId?: string;
 
   @ApiProperty({ example: false, description: 'Verification status' })
   @IsBoolean()

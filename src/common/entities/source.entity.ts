@@ -22,6 +22,9 @@ export class Source {
   })
   name: string;
 
+  @ApiProperty({ example: true })
+  isVerified: boolean;
+
   @ApiProperty()
   createdAt: Date;
 

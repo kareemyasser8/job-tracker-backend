@@ -69,7 +69,9 @@ model Preference {
 model Source {
   id      String  @id @default(uuid()) @db.Uuid
   ownerId String? @db.Uuid
-  owner   User?   @relation(fields: [ownerId], references: [id])
+  owner   User?   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  isVerified Boolean @default(false)
 
   name String @db.VarChar(100)
 
@@ -82,7 +84,7 @@ model Source {
 model Company {
   id      String  @id @default(uuid()) @db.Uuid
   ownerId String? @db.Uuid
-  owner   User?   @relation(fields: [ownerId], references: [id])
+  owner   User?   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
   name           String  @db.VarChar(100)
   normalizedName String  @db.VarChar(100)
@@ -100,7 +102,9 @@ model Company {
 model Role {
   id      String  @id @default(uuid()) @db.Uuid
   ownerId String? @db.Uuid
-  owner   User?   @relation(fields: [ownerId], references: [id])
+  owner   User?   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  isVerified Boolean @default(false)
 
   name String @unique @db.VarChar(100)
 
@@ -113,7 +117,9 @@ model Role {
 model Technology {
   id      String  @id @default(uuid()) @db.Uuid
   ownerId String? @db.Uuid
-  owner   User?   @relation(fields: [ownerId], references: [id])
+  owner   User?   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  isVerified Boolean @default(false)
 
   name String @unique @db.VarChar(100)
 
