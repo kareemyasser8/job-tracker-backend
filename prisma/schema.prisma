@@ -30,6 +30,15 @@ enum Currency {
   JPY
 }
 
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  FREELANCE
+  INTERNSHIP
+  TEMPORARY
+}
+
 enum ApplicationStatus {
   WISHLIST
   APPLIED
@@ -147,11 +156,11 @@ model Application {
   status   ApplicationStatus @default(APPLIED)
   position Int               @default(1000)
 
-  title          String    @db.VarChar(150)
+  title          String         @db.VarChar(150)
   description    String?
   jobUrl         String?
   workMode       WorkMode
-  employmentType String?   @db.VarChar(50)
+  employmentType EmploymentType
   salaryMin      Int?
   salaryMax      Int?
   salaryCurrency Currency?

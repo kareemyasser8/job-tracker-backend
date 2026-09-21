@@ -1,26 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto.js';
-import { Application } from '../../common/entities/application.entity.js';
-import { Technology } from '../../common/entities/technology.entity.js';
+import { ApplicationResponse } from '../../common/entities/application-response.entity.js';
+import { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { buildOrderBy, buildWhere } from './application-query.builder.js';
 import { CreateApplicationDto } from './dto/create-application.dto.js';
+import { FindApplicationsQueryDto } from './dto/find-applications-query.dto.js';
 import { UpdateApplicationDto } from './dto/update-application.dto.js';
 
-const TECHNOLOGY_SELECT = {
+export const applicationSelect = {
   id: true,
-  ownerId: true,
-  name: true,
-  isVerified: true,
-  createdAt: true,
-  updatedAt: true,
-} as const;
-
-const APPLICATION_SELECT = {
-  id: true,
-  userId: true,
-  companyId: true,
-  roleId: true,
-  sourceId: true,
   status: true,
   position: true,
   title: true,
@@ -33,162 +21,161 @@ const APPLICATION_SELECT = {
   salaryCurrency: true,
   appliedAt: true,
   createdAt: true,
-} as const;
+  company: { select: { name: true } },
+  role: { select: { name: true } },
+  source: { select: { name: true } },
+  technologies: {
+    select: { technology: { select: { name: true } } },
+    orderBy: { technology: { name: 'asc' } },
+  },
+  notes: {
+    select: { content: true },
+    orderBy: { createdAt: 'asc' },
+  },
+} as const satisfies Prisma.ApplicationSelect;
 
-type RawApplication = Omit<Application, 'technologies'> & {
-  technologies: { technology: Technology }[];
-};
+type RawApplication = Prisma.ApplicationGetPayload<{
+  select: typeof applicationSelect;
+}>;
 
-function mapTechnologies(raw: RawApplication): Application {
-  const { technologies: join, ...rest } = raw as unknown as RawApplication;
+export function toResponse(raw: RawApplication): ApplicationResponse {
   return {
-    ...(rest as unknown as Application),
-    technologies: (join as { technology: Technology }[])?.map((j) => j.technology) ?? [],
-  } as Application;
+    id: raw.id,
+    status: raw.status,
+    position: raw.position,
+    title: raw.title,
+    description: raw.description,
+    jobUrl: raw.jobUrl,
+    workMode: raw.workMode,
+    employmentType: raw.employmentType,
+    salaryMin: raw.salaryMin,
+    salaryMax: raw.salaryMax,
+    salaryCurrency: raw.salaryCurrency,
+    appliedAt: raw.appliedAt,
+    createdAt: raw.createdAt,
+    company: raw.company.name,
+    role: raw.role.name,
+    source: raw.source.name,
+    technologies: raw.technologies.map((t) => t.technology.name),
+    notes: raw.notes.map((n) => n.content),
+  };
+}
+
+function handleNotFound(error: unknown, id: string): never {
+  if (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === 'P2025'
+  ) {
+    throw new NotFoundException(`Application with id ${id} not found`);
+  }
+  throw error;
 }
 
 @Injectable()
 export class ApplicationService {
   constructor(private readonly prismaService: PrismaService) {}
 
-  async createApplication(createApplicationDto: CreateApplicationDto): Promise<Application> {
-    const raw = (await this.prismaService.application.create({
+  async createApplication(
+    createApplicationDto: CreateApplicationDto,
+  ): Promise<ApplicationResponse> {
+    const { technologyIds, appliedAt, ...rest } = createApplicationDto;
+    const uniqueIds = technologyIds ? [...new Set(technologyIds)] : [];
+
+    const raw = await this.prismaService.application.create({
       data: {
-        userId: createApplicationDto.userId,
-        companyId: createApplicationDto.companyId,
-        roleId: createApplicationDto.roleId,
-        sourceId: createApplicationDto.sourceId,
-        status: createApplicationDto.status,
-        position: createApplicationDto.position,
-        title: createApplicationDto.title,
-        description: createApplicationDto.description,
-        jobUrl: createApplicationDto.jobUrl,
-        workMode: createApplicationDto.workMode,
-        employmentType: createApplicationDto.employmentType,
-        salaryMin: createApplicationDto.salaryMin,
-        salaryMax: createApplicationDto.salaryMax,
-        salaryCurrency: createApplicationDto.salaryCurrency,
-        appliedAt: new Date(createApplicationDto.appliedAt),
-        ...(createApplicationDto.technologyIds?.length
+        ...rest,
+        appliedAt: new Date(appliedAt),
+        ...(uniqueIds.length
           ? {
               technologies: {
-                create: createApplicationDto.technologyIds.map((technologyId) => ({
+                create: uniqueIds.map((technologyId) => ({
                   technologyId,
                 })),
               },
             }
           : {}),
-      },
-      select: {
-        ...APPLICATION_SELECT,
-        technologies: {
-          select: {
-            technology: { select: TECHNOLOGY_SELECT },
-          },
-        },
-      },
-    })) as unknown as RawApplication;
+      } as Prisma.ApplicationUncheckedCreateInput,
+      select: applicationSelect,
+    });
 
-    return mapTechnologies(raw);
+    return toResponse(raw);
   }
 
   async findAll(
-    paginationQuery: PaginationQueryDto,
-  ): Promise<{ total: number; data: Application[] }> {
-    const { page, limit } = paginationQuery;
+    query: FindApplicationsQueryDto,
+  ): Promise<{ total: number; data: ApplicationResponse[] }> {
+    const { page, limit } = query;
     const skip = (page - 1) * limit;
+
+    const where = buildWhere(query);
+    const orderBy = buildOrderBy(query);
 
     const [rawData, total] = await Promise.all([
       this.prismaService.application.findMany({
+        where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
-        select: {
-          ...APPLICATION_SELECT,
-          technologies: {
-            select: {
-              technology: { select: TECHNOLOGY_SELECT },
-            },
-          },
-        },
-      }) as unknown as Promise<RawApplication[]>,
-      this.prismaService.application.count(),
+        orderBy,
+        select: applicationSelect,
+      }),
+      this.prismaService.application.count({ where }),
     ]);
 
-    const data = rawData.map(mapTechnologies);
+    const data = rawData.map(toResponse);
 
     return { total, data };
   }
 
-  async findOne(id: string): Promise<Application> {
-    const raw = (await this.prismaService.application.findUnique({
+  async findOne(id: string): Promise<ApplicationResponse> {
+    const raw = await this.prismaService.application.findUnique({
       where: { id },
-      select: {
-        ...APPLICATION_SELECT,
-        technologies: {
-          select: {
-            technology: { select: TECHNOLOGY_SELECT },
-          },
-        },
-      },
-    })) as unknown as RawApplication | null;
+      select: applicationSelect,
+    });
     if (!raw) {
       throw new NotFoundException(`Application with id ${id} not found`);
     }
-    return mapTechnologies(raw);
+    return toResponse(raw);
   }
 
   async updateOne(
     id: string,
     updateApplicationDto: UpdateApplicationDto,
-  ): Promise<Application> {
-    const raw = (await this.prismaService.application.update({
-      where: { id },
-      data: {
-        userId: updateApplicationDto?.userId,
-        companyId: updateApplicationDto?.companyId,
-        roleId: updateApplicationDto?.roleId,
-        sourceId: updateApplicationDto?.sourceId,
-        status: updateApplicationDto?.status,
-        position: updateApplicationDto?.position,
-        title: updateApplicationDto?.title,
-        description: updateApplicationDto?.description,
-        jobUrl: updateApplicationDto?.jobUrl,
-        workMode: updateApplicationDto?.workMode,
-        employmentType: updateApplicationDto?.employmentType,
-        salaryMin: updateApplicationDto?.salaryMin,
-        salaryMax: updateApplicationDto?.salaryMax,
-        salaryCurrency: updateApplicationDto?.salaryCurrency,
-        appliedAt: updateApplicationDto?.appliedAt
-          ? new Date(updateApplicationDto.appliedAt)
-          : undefined,
-        ...(updateApplicationDto?.technologyIds !== undefined
-          ? {
-              technologies: {
-                deleteMany: {},
-                create: updateApplicationDto.technologyIds.map((technologyId) => ({
-                  technologyId,
-                })),
-              },
-            }
-          : {}),
-      },
-      select: {
-        ...APPLICATION_SELECT,
-        technologies: {
-          select: {
-            technology: { select: TECHNOLOGY_SELECT },
-          },
-        },
-      },
-    })) as unknown as RawApplication;
+  ): Promise<ApplicationResponse> {
+    const { technologyIds, appliedAt, ...rest } = updateApplicationDto;
 
-    return mapTechnologies(raw);
+    try {
+      const raw = await this.prismaService.application.update({
+        where: { id },
+        data: {
+          ...rest,
+          ...(appliedAt ? { appliedAt: new Date(appliedAt) } : {}),
+          ...(technologyIds !== undefined
+            ? {
+                technologies: {
+                  deleteMany: {},
+                  create: [...new Set(technologyIds)].map((technologyId) => ({
+                    technologyId,
+                  })),
+                },
+              }
+            : {}),
+        } as Prisma.ApplicationUncheckedUpdateInput,
+        select: applicationSelect,
+      });
+
+      return toResponse(raw);
+    } catch (error) {
+      handleNotFound(error, id);
+    }
   }
 
   async deleteOne(id: string): Promise<void> {
-    await this.prismaService.application.delete({
-      where: { id },
-    });
+    try {
+      await this.prismaService.application.delete({
+        where: { id },
+      });
+    } catch (error) {
+      handleNotFound(error, id);
+    }
   }
 }

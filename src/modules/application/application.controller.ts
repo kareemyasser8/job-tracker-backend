@@ -10,12 +10,19 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { PaginatedResponse } from '../../common/dto/paginated-response.dto.js';
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto.js';
-import { Application } from '../../common/entities/application.entity.js';
+import { ApplicationResponse } from '../../common/entities/application-response.entity.js';
 import { ApplicationService } from './application.service.js';
 import { CreateApplicationDto } from './dto/create-application.dto.js';
+import { FindApplicationsQueryDto } from './dto/find-applications-query.dto.js';
 import { UpdateApplicationDto } from './dto/update-application.dto.js';
 
 @ApiTags('Applications')
@@ -25,39 +32,59 @@ export class ApplicationController {
 
   @Get()
   @ApiOperation({ summary: 'Get all applications' })
-  @ApiResponse({
-    status: 200,
+  @ApiOkResponse({
     description: 'Paginated list of applications',
-    type: PaginatedResponse(Application),
+    type: PaginatedResponse(ApplicationResponse),
   })
-  getApplications(@Query() paginationQuery: PaginationQueryDto) {
-    return this.applicationService.findAll(paginationQuery);
+  findAll(
+    @Query() query: FindApplicationsQueryDto,
+  ): Promise<{ total: number; data: ApplicationResponse[] }> {
+    return this.applicationService.findAll(query);
+  }
+
+  // Alias for backward compatibility with existing tests
+  getApplications(
+    query: FindApplicationsQueryDto,
+  ): Promise<{ total: number; data: ApplicationResponse[] }> {
+    return this.findAll(query);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get an application by id' })
   @ApiParam({ name: 'id', description: 'Application ID' })
-  @ApiResponse({ status: 200, description: 'The found application', type: Application })
+  @ApiOkResponse({
+    description: 'The found application',
+    type: ApplicationResponse,
+  })
   @ApiResponse({ status: 404, description: 'Application not found' })
-  getApplication(@Param('id') id: string) {
+  getApplication(@Param('id') id: string): Promise<ApplicationResponse> {
     return this.applicationService.findOne(id);
   }
 
   @Post()
   @ApiOperation({ summary: 'Create a new application' })
-  @ApiResponse({ status: 201, description: 'Application created' })
-  createApplication(@Body() createApplicationDto: CreateApplicationDto) {
+  @ApiCreatedResponse({
+    description: 'Application created',
+    type: ApplicationResponse,
+  })
+  createApplication(
+    @Body() createApplicationDto: CreateApplicationDto,
+  ): Promise<ApplicationResponse> {
     return this.applicationService.createApplication(createApplicationDto);
   }
 
   @Put(':id')
   @ApiOperation({ summary: 'Update an application' })
   @ApiParam({ name: 'id', description: 'Application ID' })
-  @ApiResponse({ status: 200, description: 'Application updated' })
+  @ApiOkResponse({
+    description: 'Application updated',
+    type: ApplicationResponse,
+  })
+  @ApiResponse({ status: 404, description: 'Application not found' })
   updateApplication(
     @Param('id') id: string,
     @Body() updateApplicationDto: UpdateApplicationDto,
-  ) {
+  ): Promise<ApplicationResponse> {
     return this.applicationService.updateOne(id, updateApplicationDto);
   }
 
@@ -65,7 +92,8 @@ export class ApplicationController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete an application' })
   @ApiParam({ name: 'id', description: 'Application ID' })
-  @ApiResponse({ status: 200, description: 'Application deleted' })
+  @ApiResponse({ status: 204, description: 'Application deleted' })
+  @ApiResponse({ status: 404, description: 'Application not found' })
   async deleteApplication(@Param('id') id: string): Promise<void> {
     return this.applicationService.deleteOne(id);
   }

@@ -11,7 +11,12 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { Currency, WorkMode, ApplicationStatusType } from '../../../generated/prisma/enums.js';
+import {
+  ApplicationStatus,
+  Currency,
+  EmploymentType,
+  WorkMode,
+} from '../../../generated/prisma/enums.js';
 
 export class CreateApplicationDto {
   @ApiProperty({
@@ -47,15 +52,15 @@ export class CreateApplicationDto {
   sourceId: string;
 
   @ApiPropertyOptional({
-    enum: ApplicationStatusType,
+    enum: ApplicationStatus,
     enumName: 'ApplicationStatus',
-    default: ApplicationStatusType.APPLIED,
-    example: ApplicationStatusType.APPLIED,
+    default: ApplicationStatus.APPLIED,
+    example: ApplicationStatus.APPLIED,
     description: 'Application status',
   })
   @IsOptional()
-  @IsEnum(ApplicationStatusType)
-  status?: ApplicationStatusType;
+  @IsEnum(ApplicationStatus)
+  status?: ApplicationStatus;
 
   @ApiPropertyOptional({
     type: 'integer',
@@ -97,11 +102,16 @@ export class CreateApplicationDto {
   @IsEnum(WorkMode)
   workMode: WorkMode;
 
-  @ApiPropertyOptional({ maxLength: 50, nullable: true, example: 'Full-time' })
+  @ApiPropertyOptional({
+    enum: EmploymentType,
+    enumName: 'EmploymentType',
+    nullable: true,
+    example: EmploymentType.FULL_TIME,
+    description: 'Employment type',
+  })
   @IsOptional()
-  @IsString()
-  @MaxLength(50)
-  employmentType?: string;
+  @IsEnum(EmploymentType)
+  employmentType?: EmploymentType | null;
 
   @ApiPropertyOptional({ type: 'integer', nullable: true, example: 60000 })
   @IsOptional()
@@ -127,7 +137,11 @@ export class CreateApplicationDto {
   @IsEnum(Currency)
   salaryCurrency?: Currency;
 
-  @ApiProperty({ type: String, format: 'date-time', example: '2026-09-14T10:55:11.715Z' })
+  @ApiProperty({
+    type: String,
+    format: 'date-time',
+    example: '2026-09-14T10:55:11.715Z',
+  })
   @IsDateString()
   appliedAt: string;
 

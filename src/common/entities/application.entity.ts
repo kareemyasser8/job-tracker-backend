@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  ApplicationStatusType,
+  ApplicationStatus,
   Currency,
   WorkMode,
 } from '../../generated/prisma/enums.js';
@@ -36,12 +36,12 @@ export class Application {
 
   @ApiProperty({
     description: 'Current status of the application',
-    enum: ApplicationStatusType,
+    enum: ApplicationStatus,
     enumName: 'ApplicationStatus',
-    default: ApplicationStatusType.APPLIED,
-    example: ApplicationStatusType.APPLIED,
+    default: ApplicationStatus.APPLIED,
+    example: ApplicationStatus.APPLIED,
   })
-  status: ApplicationStatusType;
+  status: ApplicationStatus;
 
   @ApiProperty({
     description:

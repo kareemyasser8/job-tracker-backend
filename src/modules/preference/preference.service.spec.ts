@@ -59,7 +59,11 @@ describe('PreferenceService', () => {
 
   describe('remove', () => {
     it('should delete a preference', async () => {
-      vi.spyOn(prismaService.preference, 'delete').mockResolvedValue({ userId: '1' });
+      vi.spyOn(prismaService.preference, 'delete').mockResolvedValue({
+        userId: '1',
+        isDarkMode: false,
+        isGridLayout: false,
+      } as any);
       await service.remove('1');
       expect(prismaService.preference.delete).toHaveBeenCalledWith({ where: { userId: '1' } });
     });
