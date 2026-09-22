@@ -7,6 +7,7 @@ import {
 } from '@nestjs/swagger';
 import { Request } from 'express';
 
+import { Public } from '../../common/decorators/public.decorator.js';
 import { AuthService } from './auth.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { JwtAccessGuard } from './guards/jwt-access.guard.js';
@@ -17,6 +18,7 @@ import { JwtRefreshGuard } from './guards/jwt-refresh.guard.js';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Public()
   @Post('login')
   @ApiOperation({ summary: 'Login user' })
   @ApiResponse({

@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
 import { createObserveModule } from '@nestjs/observe';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { ApplicationNoteModule } from './modules/application-note/application-note.module.js';
 import { ApplicationModule } from './modules/application/application.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { JwtAccessGuard } from './modules/auth/guards/jwt-access.guard.js';
 import { CompanyModule } from './modules/company/company.module.js';
 import { PreferenceModule } from './modules/preference/preference.module.js';
 import { RoleModule } from './modules/role/role.module.js';
@@ -40,6 +42,6 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     AuthModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, { provide: APP_GUARD, useClass: JwtAccessGuard }],
 })
 export class AppModule {}
