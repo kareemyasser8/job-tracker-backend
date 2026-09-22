@@ -1,7 +1,11 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { createObserveModule } from '@nestjs/observe';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
+import { ApplicationNoteModule } from './modules/application-note/application-note.module.js';
+import { ApplicationModule } from './modules/application/application.module.js';
+import { AuthModule } from './modules/auth/auth.module.js';
 import { CompanyModule } from './modules/company/company.module.js';
 import { PreferenceModule } from './modules/preference/preference.module.js';
 import { RoleModule } from './modules/role/role.module.js';
@@ -9,8 +13,6 @@ import { SourceModule } from './modules/source/source.module.js';
 import { TechnologyModule } from './modules/technology/technology.module.js';
 import { UserModule } from './modules/user/user.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
-import { ApplicationModule } from './modules/application/application.module.js';
-import { ApplicationNoteModule } from './modules/application-note/application-note.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -23,6 +25,9 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     //   appSecret: 'YOUR_APP_SECRET',
     //   serviceId: 'job-tracker-backend',
     // }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
     PrismaModule,
     UserModule,
     CompanyModule,
@@ -32,6 +37,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     TechnologyModule,
     ApplicationModule,
     ApplicationNoteModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
