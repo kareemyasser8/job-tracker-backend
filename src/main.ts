@@ -12,8 +12,19 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('Job Tracker API')
-    .setDescription('API for managing job applications')
+    .setDescription('API documentation')
     .setVersion('1.0')
+    .addTag('Auth') // entry point — login/register/refresh
+    .addTag('Users') // the authenticated user's own data
+    .addTag('Applications') // core resource — job applications
+    .addTag('Application Notes') // tightly coupled to Application, right after it
+    .addTag('Companies') // linked to applications
+    .addTag('Roles') // linked to applications
+    .addTag('Sources') // where the application came from
+    .addTag('Technologies') // tags/stack associated with applications
+    .addTag('Preferences') // user settings, least frequently touched
+    .addBearerAuth()
+    .addSecurityRequirements('bearer')
     .build();
 
   app.useGlobalPipes(
@@ -26,7 +37,9 @@ async function bootstrap() {
   app.useGlobalFilters(new PrismaExceptionFilter());
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api-docs', app, document); // served at /api-docs
+  SwaggerModule.setup('api-docs', app, document, {
+    swaggerOptions: { persistAuthorization: true },
+  });
 
   await app.listen(process.env.PORT ?? 3000);
 }
