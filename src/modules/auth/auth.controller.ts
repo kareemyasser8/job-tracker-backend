@@ -1,18 +1,18 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { Request } from 'express';
 
+import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { AuthService } from './auth.service.js';
 import { LoginDto } from './dto/login.dto.js';
+import { RefreshDto } from './dto/refresh.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { JwtAccessGuard } from './guards/jwt-access.guard.js';
-import { JwtRefreshGuard } from './guards/jwt-refresh.guard.js';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -61,13 +61,12 @@ export class AuthController {
     status: 401,
     description: 'Invalid or expired access token.',
   })
-  async logout(@Req() req: Request & { user: { userId: string } }) {
-    return this.authService.logout(req.user.userId);
+  async logout(@CurrentUser('userId') userId: string) {
+    return this.authService.logout(userId);
   }
 
-  @UseGuards(JwtRefreshGuard)
+  @Public()
   @Post('refresh')
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Refresh access token' })
   @ApiResponse({
     status: 200,
@@ -77,19 +76,7 @@ export class AuthController {
     status: 401,
     description: 'Invalid or expired refresh token.',
   })
-  async refresh(
-    @Req()
-    req: Request & {
-      user: {
-        userId: string;
-        email: string;
-        refreshToken: string;
-      };
-    },
-  ) {
-    return this.authService.refreshTokens(
-      req.user.userId,
-      req.user.refreshToken,
-    );
+  async refresh(@Body() dto: RefreshDto) {
+    return this.authService.refresh(dto.refreshToken);
   }
 }

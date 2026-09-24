@@ -77,6 +77,21 @@ export class AuthService {
     return tokens;
   }
 
+  async refresh(refreshToken: string) {
+    let payload: { sub: string; email: string };
+    try {
+      payload = await this.jwtService.verifyAsync<{ sub: string; email: string }>(
+        refreshToken,
+        {
+          secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+        },
+      );
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+    return this.refreshTokens(payload.sub, refreshToken);
+  }
+
   private async updateRefreshTokenHash(userId: string, refreshToken: string) {
     const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
 
