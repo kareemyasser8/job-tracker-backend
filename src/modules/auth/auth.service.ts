@@ -1,9 +1,15 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import type { StringValue } from 'ms';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { UserService } from '../user/user.service.js';
+import { RegisterDto } from './dto/register.dto.js';
 
 @Injectable()
 export class AuthService {
@@ -11,13 +17,11 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly userService: UserService,
   ) {}
 
   async validateUser(email: string, password: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { email },
-    });
-
+    const user = await this.userService.findByEmailWithPassword(email);
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
     const passwordMatches = await bcrypt.compare(password, user.passwordHash);
@@ -45,7 +49,10 @@ export class AuthService {
           email,
         },
         {
-          secret: this.configService.get<string>('JWT_ACCESS_REFRESH'),
+          secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+          expiresIn: this.configService.get<StringValue>(
+            'JWT_REFRESH_EXPIRATION',
+          ),
         },
       ),
     ]);
@@ -96,5 +103,19 @@ export class AuthService {
         hashedRefreshToken: null,
       },
     });
+  }
+
+  async register(dto: RegisterDto) {
+    const existing = await this.userService.findByEmail(dto.email);
+    if (existing) throw new ConflictException('Email already in use');
+
+    const user = await this.userService.createUser({
+      email: dto.email,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      password: dto.password, // plain password in, hashing is createUser's job
+    });
+
+    return this.login(user.id, user.email);
   }
 }

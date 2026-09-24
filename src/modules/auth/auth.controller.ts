@@ -10,6 +10,7 @@ import { Request } from 'express';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { AuthService } from './auth.service.js';
 import { LoginDto } from './dto/login.dto.js';
+import { RegisterDto } from './dto/register.dto.js';
 import { JwtAccessGuard } from './guards/jwt-access.guard.js';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard.js';
 
@@ -17,6 +18,19 @@ import { JwtRefreshGuard } from './guards/jwt-refresh.guard.js';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Public()
+  @Post('register')
+  @ApiOperation({ summary: 'Sign up user' })
+  @ApiResponse({
+    status: 201,
+    description: 'User registered. Returns access and refresh tokens.',
+  })
+  @ApiResponse({ status: 400, description: 'Validation failed.' })
+  @ApiResponse({ status: 409, description: 'Email already in use.' })
+  async register(@Body() dto: RegisterDto) {
+    return this.authService.register(dto);
+  }
 
   @Public()
   @Post('login')

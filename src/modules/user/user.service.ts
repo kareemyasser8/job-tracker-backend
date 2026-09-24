@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto.js';
 import { User } from '../../common/entities/user.entity.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -9,14 +10,17 @@ import { UpdateUserDto } from './dto/update-user.dto.js';
 export class UserService {
   constructor(private readonly prismaService: PrismaService) {}
 
+  // user.service.ts
   async createUser(createUserDto: CreateUserDto): Promise<User> {
+    const passwordHash = await bcrypt.hash(createUserDto.password, 10);
+
     return this.prismaService.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
           firstName: createUserDto.firstName,
           lastName: createUserDto.lastName,
           email: createUserDto.email,
-          passwordHash: createUserDto.password,
+          passwordHash,
         },
         select: {
           id: true,
@@ -27,10 +31,7 @@ export class UserService {
         },
       });
 
-      await tx.preference.create({
-        data: { userId: user.id },
-      });
-
+      await tx.preference.create({ data: { userId: user.id } });
       return user;
     });
   }
@@ -58,6 +59,33 @@ export class UserService {
     ]);
 
     return { total, data };
+  }
+
+  async findByEmailWithPassword(email: string) {
+    return this.prismaService.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        passwordHash: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  async findByEmail(email: string): Promise<User | null> {
+    return this.prismaService.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        createdAt: true,
+      },
+    });
   }
 
   async findOne(id: string): Promise<User> {
