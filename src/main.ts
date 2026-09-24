@@ -17,7 +17,7 @@ async function bootstrap() {
     .addTag('Auth') // entry point — login/register/refresh
     .addTag('Users') // the authenticated user's own data
     .addTag('Applications') // core resource — job applications
-    .addTag('Application Notes') // tightly coupled to Application, right after it
+    .addTag('ApplicationNotes') // tightly coupled to Application, right after it
     .addTag('Companies') // linked to applications
     .addTag('Roles') // linked to applications
     .addTag('Sources') // where the application came from

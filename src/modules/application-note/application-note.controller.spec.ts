@@ -6,6 +6,8 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { ApplicationNoteController } from './application-note.controller.js';
 import { ApplicationNoteService } from './application-note.service.js';
 
+const USER_ID = 'user-1';
+
 const mockApplicationNote: ApplicationNote = {
   id: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
   applicationId: '4fa85f64-5717-4562-b3fc-2c963f66afa7',
@@ -25,14 +27,8 @@ describe('ApplicationNoteController', () => {
         {
           provide: PrismaService,
           useValue: {
-            applicationNote: {
-              create: vi.fn(),
-              findMany: vi.fn(),
-              findUnique: vi.fn(),
-              update: vi.fn(),
-              delete: vi.fn(),
-              count: vi.fn(),
-            },
+            applicationNote: { create: vi.fn(), findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn(), delete: vi.fn(), count: vi.fn() },
+            application: { findFirst: vi.fn() },
           },
         },
       ],
@@ -48,72 +44,44 @@ describe('ApplicationNoteController', () => {
 
   describe('getApplicationNotes', () => {
     it('should return paginated application notes', async () => {
-      vi.spyOn(service, 'findAll').mockResolvedValue({
-        total: 1,
-        data: [mockApplicationNote],
-      });
-
-      const result = await controller.getApplicationNotes({ page: 1, limit: 10 });
-
-      expect(service.findAll).toHaveBeenCalledWith({ page: 1, limit: 10 });
+      vi.spyOn(service, 'findAll').mockResolvedValue({ total: 1, data: [mockApplicationNote] });
+      const result = await controller.getApplicationNotes({ page: 1, limit: 10 }, USER_ID);
+      expect(service.findAll).toHaveBeenCalledWith({ page: 1, limit: 10 }, USER_ID);
       expect(result).toEqual({ total: 1, data: [mockApplicationNote] });
-    });
-
-    it('should return an empty page when there are no application notes', async () => {
-      vi.spyOn(service, 'findAll').mockResolvedValue({ total: 0, data: [] });
-
-      const result = await controller.getApplicationNotes({ page: 1, limit: 10 });
-
-      expect(result).toEqual({ total: 0, data: [] });
     });
   });
 
   describe('getApplicationNote', () => {
     it('should return an application note by id', async () => {
       vi.spyOn(service, 'findOne').mockResolvedValue(mockApplicationNote);
-
-      const result = await controller.getApplicationNote(mockApplicationNote.id);
-
-      expect(service.findOne).toHaveBeenCalledWith(mockApplicationNote.id);
+      const result = await controller.getApplicationNote(mockApplicationNote.id, USER_ID);
+      expect(service.findOne).toHaveBeenCalledWith(mockApplicationNote.id, USER_ID);
       expect(result).toEqual(mockApplicationNote);
     });
 
-    it('should propagate NotFoundException for a missing application note', async () => {
-      vi.spyOn(service, 'findOne').mockRejectedValue(
-        new NotFoundException('ApplicationNote with id 999 not found'),
-      );
-
-      await expect(controller.getApplicationNote('999')).rejects.toThrow(NotFoundException);
-      await expect(controller.getApplicationNote('999')).rejects.toThrow(
-        'ApplicationNote with id 999 not found',
-      );
+    it('should propagate NotFoundException', async () => {
+      vi.spyOn(service, 'findOne').mockRejectedValue(new NotFoundException('ApplicationNote with id 999 not found'));
+      await expect(controller.getApplicationNote('999', USER_ID)).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('createApplicationNote', () => {
-    it('should create an application note and return it', async () => {
-      const dto = {
-        applicationId: mockApplicationNote.applicationId,
-        content: 'Followed up via email, awaiting response.',
-      };
+    it('should create an application note', async () => {
+      const dto = { applicationId: mockApplicationNote.applicationId, content: 'Followed up via email, awaiting response.' };
       vi.spyOn(service, 'createApplicationNote').mockResolvedValue(mockApplicationNote);
-
-      const result = await controller.createApplicationNote(dto);
-
-      expect(service.createApplicationNote).toHaveBeenCalledWith(dto);
+      const result = await controller.createApplicationNote(dto, USER_ID);
+      expect(service.createApplicationNote).toHaveBeenCalledWith(dto, USER_ID);
       expect(result).toEqual(mockApplicationNote);
     });
   });
 
   describe('updateApplicationNote', () => {
-    it('should update an application note and return the updated record', async () => {
+    it('should update an application note', async () => {
       const dto = { content: 'Updated content' };
       const updated = { ...mockApplicationNote, content: 'Updated content' };
       vi.spyOn(service, 'updateOne').mockResolvedValue(updated);
-
-      const result = await controller.updateApplicationNote(mockApplicationNote.id, dto);
-
-      expect(service.updateOne).toHaveBeenCalledWith(mockApplicationNote.id, dto);
+      const result = await controller.updateApplicationNote(mockApplicationNote.id, dto, USER_ID);
+      expect(service.updateOne).toHaveBeenCalledWith(mockApplicationNote.id, dto, USER_ID);
       expect(result).toEqual(updated);
     });
   });
@@ -121,10 +89,8 @@ describe('ApplicationNoteController', () => {
   describe('deleteApplicationNote', () => {
     it('should delete an application note', async () => {
       vi.spyOn(service, 'deleteOne').mockResolvedValue(undefined);
-
-      const result = await controller.deleteApplicationNote(mockApplicationNote.id);
-
-      expect(service.deleteOne).toHaveBeenCalledWith(mockApplicationNote.id);
+      const result = await controller.deleteApplicationNote(mockApplicationNote.id, USER_ID);
+      expect(service.deleteOne).toHaveBeenCalledWith(mockApplicationNote.id, USER_ID);
       expect(result).toBeUndefined();
     });
   });

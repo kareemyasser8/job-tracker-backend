@@ -22,14 +22,6 @@ export class CreateApplicationDto {
   @ApiProperty({
     example: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
     format: 'uuid',
-    description: 'Owner user ID',
-  })
-  @IsUUID()
-  userId: string;
-
-  @ApiProperty({
-    example: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
-    format: 'uuid',
     description: 'Company ID',
   })
   @IsUUID()

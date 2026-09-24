@@ -18,6 +18,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { PaginatedResponse } from '../../common/dto/paginated-response.dto.js';
 import { ApplicationResponse } from '../../common/entities/application-response.entity.js';
 import { ApplicationService } from './application.service.js';
@@ -31,22 +32,24 @@ export class ApplicationController {
   constructor(private readonly applicationService: ApplicationService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get all applications' })
+  @ApiOperation({ summary: 'Get all applications for the current user' })
   @ApiOkResponse({
     description: 'Paginated list of applications',
     type: PaginatedResponse(ApplicationResponse),
   })
   findAll(
     @Query() query: FindApplicationsQueryDto,
+    @CurrentUser('userId') userId: string,
   ): Promise<{ total: number; data: ApplicationResponse[] }> {
-    return this.applicationService.findAll(query);
+    return this.applicationService.findAll(query, userId);
   }
 
   // Alias for backward compatibility with existing tests
   getApplications(
     query: FindApplicationsQueryDto,
+    userId: string,
   ): Promise<{ total: number; data: ApplicationResponse[] }> {
-    return this.findAll(query);
+    return this.findAll(query, userId);
   }
 
   @Get(':id')
@@ -57,8 +60,11 @@ export class ApplicationController {
     type: ApplicationResponse,
   })
   @ApiResponse({ status: 404, description: 'Application not found' })
-  getApplication(@Param('id') id: string): Promise<ApplicationResponse> {
-    return this.applicationService.findOne(id);
+  getApplication(
+    @Param('id') id: string,
+    @CurrentUser('userId') userId: string,
+  ): Promise<ApplicationResponse> {
+    return this.applicationService.findOne(id, userId);
   }
 
   @Post()
@@ -67,10 +73,12 @@ export class ApplicationController {
     description: 'Application created',
     type: ApplicationResponse,
   })
+  @ApiResponse({ status: 404, description: 'Company/Role/Source/Technology not found or not visible' })
   createApplication(
     @Body() createApplicationDto: CreateApplicationDto,
+    @CurrentUser('userId') userId: string,
   ): Promise<ApplicationResponse> {
-    return this.applicationService.createApplication(createApplicationDto);
+    return this.applicationService.createApplication(createApplicationDto, userId);
   }
 
   @Put(':id')
@@ -80,12 +88,13 @@ export class ApplicationController {
     description: 'Application updated',
     type: ApplicationResponse,
   })
-  @ApiResponse({ status: 404, description: 'Application not found' })
+  @ApiResponse({ status: 404, description: 'Application not found or referenced entity not visible' })
   updateApplication(
     @Param('id') id: string,
     @Body() updateApplicationDto: UpdateApplicationDto,
+    @CurrentUser('userId') userId: string,
   ): Promise<ApplicationResponse> {
-    return this.applicationService.updateOne(id, updateApplicationDto);
+    return this.applicationService.updateOne(id, updateApplicationDto, userId);
   }
 
   @Delete(':id')
@@ -94,7 +103,10 @@ export class ApplicationController {
   @ApiParam({ name: 'id', description: 'Application ID' })
   @ApiResponse({ status: 204, description: 'Application deleted' })
   @ApiResponse({ status: 404, description: 'Application not found' })
-  async deleteApplication(@Param('id') id: string): Promise<void> {
-    return this.applicationService.deleteOne(id);
+  async deleteApplication(
+    @Param('id') id: string,
+    @CurrentUser('userId') userId: string,
+  ): Promise<void> {
+    return this.applicationService.deleteOne(id, userId);
   }
 }

@@ -75,15 +75,106 @@ function handleNotFound(error: unknown, id: string): never {
 export class ApplicationService {
   constructor(private readonly prismaService: PrismaService) {}
 
+  private async assertReferencesVisible(
+    userId: string,
+    refs: {
+      companyId?: string;
+      roleId?: string;
+      sourceId?: string;
+      technologyIds?: string[];
+    },
+  ) {
+    const checks: Promise<void>[] = [];
+
+    if (refs.companyId) {
+      checks.push(
+        this.prismaService.company
+          .findFirst({
+            where: {
+              id: refs.companyId,
+              OR: [{ ownerId: null }, { ownerId: userId }],
+            },
+            select: { id: true },
+          })
+          .then((row) => {
+            if (!row) throw new NotFoundException(`Company with id ${refs.companyId} not found`);
+          }),
+      );
+    }
+
+    if (refs.roleId) {
+      checks.push(
+        this.prismaService.role
+          .findFirst({
+            where: {
+              id: refs.roleId,
+              OR: [{ ownerId: null }, { ownerId: userId }],
+            },
+            select: { id: true },
+          })
+          .then((row) => {
+            if (!row) throw new NotFoundException(`Role with id ${refs.roleId} not found`);
+          }),
+      );
+    }
+
+    if (refs.sourceId) {
+      checks.push(
+        this.prismaService.source
+          .findFirst({
+            where: {
+              id: refs.sourceId,
+              OR: [{ ownerId: null }, { ownerId: userId }],
+            },
+            select: { id: true },
+          })
+          .then((row) => {
+            if (!row) throw new NotFoundException(`Source with id ${refs.sourceId} not found`);
+          }),
+      );
+    }
+
+    if (refs.technologyIds && refs.technologyIds.length > 0) {
+      const uniqueIds = [...new Set(refs.technologyIds)];
+      for (const tid of uniqueIds) {
+        checks.push(
+          this.prismaService.technology
+            .findFirst({
+              where: {
+                id: tid,
+                OR: [{ ownerId: null }, { ownerId: userId }],
+              },
+              select: { id: true },
+            })
+            .then((row) => {
+              if (!row) throw new NotFoundException(`Technology with id ${tid} not found`);
+            }),
+        );
+      }
+    }
+
+    await Promise.all(checks);
+  }
+
   async createApplication(
     createApplicationDto: CreateApplicationDto,
+    userId: string,
   ): Promise<ApplicationResponse> {
     const { technologyIds, appliedAt, ...rest } = createApplicationDto;
+
+    await this.assertReferencesVisible(userId, {
+      companyId: rest.companyId,
+      roleId: rest.roleId,
+      sourceId: rest.sourceId,
+      technologyIds,
+    });
+
     const uniqueIds = technologyIds ? [...new Set(technologyIds)] : [];
 
     const raw = await this.prismaService.application.create({
       data: {
         ...rest,
+        userId,
         appliedAt: new Date(appliedAt),
         ...(uniqueIds.length
           ? {
@@ -103,11 +194,14 @@ export class ApplicationService {
 
   async findAll(
     query: FindApplicationsQueryDto,
+    userId: string,
   ): Promise<{ total: number; data: ApplicationResponse[] }> {
     const { page, limit } = query;
     const skip = (page - 1) * limit;
 
-    const where = buildWhere(query);
+    const filters = buildWhere(query);
+    const where: Prisma.ApplicationWhereInput = { userId, ...filters };
+
     const orderBy = buildOrderBy(query);
 
     const [rawData, total] = await Promise.all([
@@ -126,9 +220,9 @@ export class ApplicationService {
     return { total, data };
   }
 
-  async findOne(id: string): Promise<ApplicationResponse> {
-    const raw = await this.prismaService.application.findUnique({
-      where: { id },
+  async findOne(id: string, userId: string): Promise<ApplicationResponse> {
+    const raw = await this.prismaService.application.findFirst({
+      where: { id, userId },
       select: applicationSelect,
     });
     if (!raw) {
@@ -140,25 +234,63 @@ export class ApplicationService {
   async updateOne(
     id: string,
     updateApplicationDto: UpdateApplicationDto,
+    userId: string,
   ): Promise<ApplicationResponse> {
+    const existing = await this.prismaService.application.findFirst({
+      where: { id, userId },
+      select: { id: true },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Application with id ${id} not found`);
+    }
+
     const { technologyIds, appliedAt, ...rest } = updateApplicationDto;
 
+    await this.assertReferencesVisible(userId, {
+      companyId: rest.companyId,
+      roleId: rest.roleId,
+      sourceId: rest.sourceId,
+      technologyIds,
+    });
+
     try {
+      if (technologyIds !== undefined) {
+        const uniqueIds = [...new Set(technologyIds)];
+        const raw = await this.prismaService.$transaction(async (tx) => {
+          await tx.application.update({
+            where: { id },
+            data: {
+              ...rest,
+              ...(appliedAt ? { appliedAt: new Date(appliedAt) } : {}),
+              technologies: { deleteMany: {} },
+            } as Prisma.ApplicationUncheckedUpdateInput,
+            select: { id: true },
+          });
+
+          if (uniqueIds.length > 0) {
+            await tx.applicationTechnology.createMany({
+              data: uniqueIds.map((technologyId) => ({
+                applicationId: id,
+                technologyId,
+              })),
+            });
+          }
+
+          return tx.application.findFirst({
+            where: { id, userId },
+            select: applicationSelect,
+          });
+        });
+
+        if (!raw) throw new NotFoundException(`Application with id ${id} not found`);
+        return toResponse(raw as RawApplication);
+      }
+
       const raw = await this.prismaService.application.update({
         where: { id },
         data: {
           ...rest,
           ...(appliedAt ? { appliedAt: new Date(appliedAt) } : {}),
-          ...(technologyIds !== undefined
-            ? {
-                technologies: {
-                  deleteMany: {},
-                  create: [...new Set(technologyIds)].map((technologyId) => ({
-                    technologyId,
-                  })),
-                },
-              }
-            : {}),
         } as Prisma.ApplicationUncheckedUpdateInput,
         select: applicationSelect,
       });
@@ -169,7 +301,15 @@ export class ApplicationService {
     }
   }
 
-  async deleteOne(id: string): Promise<void> {
+  async deleteOne(id: string, userId: string): Promise<void> {
+    const existing = await this.prismaService.application.findFirst({
+      where: { id, userId },
+      select: { id: true },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Application with id ${id} not found`);
+    }
+
     try {
       await this.prismaService.application.delete({
         where: { id },
