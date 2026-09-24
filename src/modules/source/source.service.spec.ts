@@ -12,7 +12,6 @@ import { SourceService } from './source.service.js';
 
 const SOURCE_SELECT = {
   id: true,
-  ownerId: true,
   name: true,
   isVerified: true,
   createdAt: true,
@@ -65,7 +64,6 @@ describe('SourceService', () => {
       prismaService.source.findFirst.mockResolvedValue(null);
       const created = {
         id: 'source-1',
-        ownerId: USER_ID,
         name: 'LinkedIn',
         isVerified: false,
         createdAt: new Date(),
@@ -112,7 +110,6 @@ describe('SourceService', () => {
       const sources = [
         {
           id: 'source-1',
-          ownerId: null,
           name: 'LinkedIn',
           isVerified: true,
           createdAt: new Date(),
@@ -142,7 +139,6 @@ describe('SourceService', () => {
     it('should return a source by id when visible', async () => {
       const source = {
         id: OWNED_ID,
-        ownerId: USER_ID,
         name: 'LinkedIn',
         isVerified: false,
         createdAt: new Date(),
@@ -176,7 +172,6 @@ describe('SourceService', () => {
         .mockResolvedValueOnce(null);
       const updated = {
         id: OWNED_ID,
-        ownerId: USER_ID,
         name: 'Indeed',
         isVerified: false,
         createdAt: new Date(),

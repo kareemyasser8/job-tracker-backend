@@ -12,7 +12,6 @@ import { UpdateRoleDto } from './dto/update-role.dto.js';
 
 const roleSelect = {
   id: true,
-  ownerId: true,
   name: true,
   isVerified: true,
   createdAt: true,

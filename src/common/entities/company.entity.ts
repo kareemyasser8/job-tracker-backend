@@ -1,18 +1,8 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { User } from './user.entity.js';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class Company {
   @ApiProperty({ example: '7073b39c-8e1d-4d40-86ac-d331a800c4ee' })
   id: string;
-
-  @ApiPropertyOptional({
-    example: '46a508df-0a1d-4013-8a40-04223b1f1eb3',
-    nullable: true,
-  })
-  ownerId: string | null;
-
-  @ApiPropertyOptional({ type: () => User })
-  owner?: User;
 
   @ApiProperty({ example: 'Acme Inc.' })
   name: string;

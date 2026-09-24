@@ -8,7 +8,6 @@ import { TechnologyService } from './technology.service.js';
 
 const mockTech: Technology = {
   id: 'b3f1c2a4-5d6e-4f80-9a1b-2c3d4e5f6a7b',
-  ownerId: 'user-1',
   name: 'TypeScript',
   isVerified: false,
   createdAt: new Date('2026-09-14T10:55:11.715Z'),

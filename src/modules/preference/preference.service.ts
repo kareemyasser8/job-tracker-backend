@@ -11,7 +11,6 @@ export class PreferenceService {
     const preference = await this.prismaService.preference.findUnique({
       where: { userId },
       select: {
-        userId: true,
         isDarkMode: true,
         isGridLayout: true,
       },
@@ -34,12 +33,10 @@ export class PreferenceService {
         isDarkMode: updatePreferenceDto?.isDarkMode,
         isGridLayout: updatePreferenceDto?.isGridLayout,
       },
-    });
-  }
-
-  async remove(userId: string) {
-    await this.prismaService.preference.delete({
-      where: { userId },
+      select: {
+        isDarkMode: true,
+        isGridLayout: true,
+      },
     });
   }
 }

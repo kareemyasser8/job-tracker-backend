@@ -9,10 +9,8 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { CreateCompanyDto } from './dto/create-company.dto.js';
 import { UpdateCompanyDto } from './dto/update-company.dto.js';
 
-// Defined once and reused by every query so the response shape stays consistent.
 const companySelect = {
   id: true,
-  ownerId: true,
   name: true,
   normalizedName: true,
   domain: true,

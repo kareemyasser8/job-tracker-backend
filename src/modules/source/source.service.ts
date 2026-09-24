@@ -12,7 +12,6 @@ import { UpdateSourceDto } from './dto/update-source.dto.js';
 
 const sourceSelect = {
   id: true,
-  ownerId: true,
   name: true,
   isVerified: true,
   createdAt: true,

@@ -8,7 +8,6 @@ import { SourceService } from './source.service.js';
 
 const mockSource: Source = {
   id: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
-  ownerId: 'user-1',
   name: 'LinkedIn',
   isVerified: false,
   createdAt: new Date('2026-09-14T10:55:11.715Z'),

@@ -12,7 +12,6 @@ import { UpdateTechnologyDto } from './dto/update-technology.dto.js';
 
 const technologySelect = {
   id: true,
-  ownerId: true,
   name: true,
   isVerified: true,
   createdAt: true,

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Put } from '@nestjs/common';
+import { Body, Controller, Get, Put } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Preference } from '../../common/entities/preference.entity.js';
@@ -26,12 +26,5 @@ export class PreferenceController {
     @Body() updatePreferenceDto: UpdatePreferenceDto,
   ) {
     return this.preferenceService.updatePreference(userId, updatePreferenceDto);
-  }
-
-  @Delete()
-  @ApiOperation({ summary: 'Delete preferences for the current user' })
-  @ApiResponse({ status: 200, description: 'Preference deleted' })
-  deletePreference(@CurrentUser('userId') userId: string) {
-    return this.preferenceService.remove(userId);
   }
 }

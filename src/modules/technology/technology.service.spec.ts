@@ -12,7 +12,6 @@ import { TechnologyService } from './technology.service.js';
 
 const TECHNOLOGY_SELECT = {
   id: true,
-  ownerId: true,
   name: true,
   isVerified: true,
   createdAt: true,
@@ -52,7 +51,7 @@ describe('TechnologyService', () => {
   describe('createTechnology', () => {
     it('should create with ownerId from token', async () => {
       prismaService.technology.findFirst.mockResolvedValue(null);
-      const created = { id: 'tech-1', ownerId: USER_ID, name: 'TS', isVerified: false, createdAt: new Date(), updatedAt: new Date() };
+      const created = { id: 'tech-1', name: 'TS', isVerified: false, createdAt: new Date(), updatedAt: new Date() };
       prismaService.technology.create.mockResolvedValue(created);
       const result = await service.createTechnology({ name: 'TS' } as CreateTechnologyDto, USER_ID);
       expect(prismaService.technology.create).toHaveBeenCalledWith({ data: { name: 'TS', ownerId: USER_ID, isVerified: false }, select: TECHNOLOGY_SELECT });
@@ -80,7 +79,7 @@ describe('TechnologyService', () => {
 
   describe('findOne', () => {
     it('should return visible', async () => {
-      const tech = { id: 'tech-1', ownerId: USER_ID, name: 'TS', isVerified: false, createdAt: new Date(), updatedAt: new Date() };
+      const tech = { id: 'tech-1', name: 'TS', isVerified: false, createdAt: new Date(), updatedAt: new Date() };
       prismaService.technology.findFirst.mockResolvedValue(tech);
       const result = await service.findOne('tech-1', USER_ID);
       expect(result).toEqual(tech);
@@ -95,7 +94,7 @@ describe('TechnologyService', () => {
   describe('updateOne', () => {
     it('should update owned', async () => {
       prismaService.technology.findFirst.mockResolvedValueOnce({ ownerId: USER_ID }).mockResolvedValueOnce(null);
-      const updated = { id: 'tech-1', ownerId: USER_ID, name: 'JS', isVerified: false, createdAt: new Date(), updatedAt: new Date() };
+      const updated = { id: 'tech-1', name: 'JS', isVerified: false, createdAt: new Date(), updatedAt: new Date() };
       prismaService.technology.update.mockResolvedValue(updated);
       const result = await service.updateOne('tech-1', { name: 'JS' } as UpdateTechnologyDto, USER_ID);
       expect(result).toEqual(updated);

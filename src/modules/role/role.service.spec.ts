@@ -12,7 +12,6 @@ import { RoleService } from './role.service.js';
 
 const ROLE_SELECT = {
   id: true,
-  ownerId: true,
   name: true,
   isVerified: true,
   createdAt: true,
@@ -55,7 +54,7 @@ describe('RoleService', () => {
   describe('createRole', () => {
     it('should create with ownerId from token and isVerified false', async () => {
       prismaService.role.findFirst.mockResolvedValue(null);
-      const created = { id: 'role-1', ownerId: USER_ID, name: 'Backend', isVerified: false, createdAt: new Date(), updatedAt: new Date() };
+      const created = { id: 'role-1', name: 'Backend', isVerified: false, createdAt: new Date(), updatedAt: new Date() };
       prismaService.role.create.mockResolvedValue(created);
 
       const result = await service.createRole({ name: 'Backend' }, USER_ID);
@@ -92,7 +91,7 @@ describe('RoleService', () => {
 
   describe('findOne', () => {
     it('should return visible role', async () => {
-      const role = { id: 'role-1', ownerId: USER_ID, name: 'Backend', isVerified: false, createdAt: new Date(), updatedAt: new Date() };
+      const role = { id: 'role-1', name: 'Backend', isVerified: false, createdAt: new Date(), updatedAt: new Date() };
       prismaService.role.findFirst.mockResolvedValue(role);
       const result = await service.findOne('role-1', USER_ID);
       expect(result).toEqual(role);
@@ -107,7 +106,7 @@ describe('RoleService', () => {
   describe('updateOne', () => {
     it('should update owned role', async () => {
       prismaService.role.findFirst.mockResolvedValueOnce({ ownerId: USER_ID }).mockResolvedValueOnce(null);
-      const updated = { id: 'role-1', ownerId: USER_ID, name: 'Updated', isVerified: false, createdAt: new Date(), updatedAt: new Date() };
+      const updated = { id: 'role-1', name: 'Updated', isVerified: false, createdAt: new Date(), updatedAt: new Date() };
       prismaService.role.update.mockResolvedValue(updated);
       const result = await service.updateOne('role-1', { name: 'Updated' } as UpdateRoleDto, USER_ID);
       expect(result).toEqual(updated);

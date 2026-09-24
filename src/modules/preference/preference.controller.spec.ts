@@ -18,7 +18,7 @@ describe('PreferenceController', () => {
         {
           provide: PrismaService,
           useValue: {
-            preference: { findUnique: vi.fn(), upsert: vi.fn(), delete: vi.fn() },
+            preference: { findUnique: vi.fn(), upsert: vi.fn() },
           },
         },
       ],
@@ -34,10 +34,10 @@ describe('PreferenceController', () => {
 
   describe('getPreference', () => {
     it('should return preference for current user', async () => {
-      vi.spyOn(service, 'findOne').mockResolvedValue({ userId: USER_ID, isDarkMode: true, isGridLayout: false } as any);
+      vi.spyOn(service, 'findOne').mockResolvedValue({ isDarkMode: true, isGridLayout: false } as any);
       const result = await controller.getPreference(USER_ID);
       expect(service.findOne).toHaveBeenCalledWith(USER_ID);
-      expect(result).toEqual({ userId: USER_ID, isDarkMode: true, isGridLayout: false });
+      expect(result).toEqual({ isDarkMode: true, isGridLayout: false });
     });
 
     it('should throw 404 for missing preference', async () => {
@@ -48,18 +48,10 @@ describe('PreferenceController', () => {
 
   describe('updatePreference', () => {
     it('should update or create preference for current user', async () => {
-      vi.spyOn(service, 'updatePreference').mockResolvedValue({ userId: USER_ID, isDarkMode: true, isGridLayout: true } as any);
+      vi.spyOn(service, 'updatePreference').mockResolvedValue({ isDarkMode: true, isGridLayout: true } as any);
       const result = await controller.updatePreference(USER_ID, { isDarkMode: true } as any);
       expect(service.updatePreference).toHaveBeenCalledWith(USER_ID, { isDarkMode: true });
-      expect(result).toEqual({ userId: USER_ID, isDarkMode: true, isGridLayout: true });
-    });
-  });
-
-  describe('deletePreference', () => {
-    it('should delete preference for current user', async () => {
-      vi.spyOn(service, 'remove').mockResolvedValue(undefined as any);
-      await controller.deletePreference(USER_ID);
-      expect(service.remove).toHaveBeenCalledWith(USER_ID);
+      expect(result).toEqual({ isDarkMode: true, isGridLayout: true });
     });
   });
 });
