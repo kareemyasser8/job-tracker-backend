@@ -5,9 +5,7 @@ import { PrismaModule } from '../../prisma/prisma.module.js';
 import { UserModule } from '../user/user.module.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
-import { JwtRefreshGuard } from './guards/jwt-refresh.guard.js';
 import { JwtAccessStrategy } from './strategies/jwt-access.strategy.js';
-import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy.js';
 
 @Module({
   imports: [
@@ -17,12 +15,6 @@ import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy.js';
     UserModule,
   ],
   controllers: [AuthController],
-  providers: [
-    AuthService,
-    JwtAccessStrategy,
-    JwtRefreshStrategy,
-    JwtRefreshGuard,
-  ],
-  exports: [PassportModule], // 👈 add this
+  providers: [AuthService, JwtAccessStrategy],
 })
 export class AuthModule {}
