@@ -1,9 +1,11 @@
 node_modules
 dist
 .git
+.github
 .env
 .env.*
-Dockerfile
-.dockerignore
-npm-debug.log
-pnpm-debug.log
+coverage
+.vscode
+.ideap
+README.md
+*.log
