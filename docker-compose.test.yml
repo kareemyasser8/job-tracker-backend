@@ -1,0 +1,68 @@
+# ─── Testing (ephemeral, one-shot) ──────────────────────────────────────────────
+# Fresh Postgres + migrate + run e2e suite, then exit.
+#
+#   cp .env.test.example .env.test  # once
+#   pnpm test:docker                # = up --build --abort-on-container-exit
+#   pnpm test:docker:down           # wipes the test db volume
+#
+# How it works:
+# - Same `development` image as dev (all devDependencies incl. vitest), but NO
+#   bind mount: tests run against the code baked into the image, so results
+#   are reproducible and can't be polluted by unsaved host edits.
+# - `depends_on: service_healthy` guarantees Postgres accepts connections
+#   before migrations run — no `sleep 10` hacks needed.
+# - The app container EXITS when vitest finishes (exit code = pass/fail) and
+#   `--abort-on-container-exit` stops Postgres too. The named volume keeps the
+#   db between runs for speed; `down -v` gives you a truly clean slate.
+# - Host ports 3001/5433 differ from dev (3000/5432) and prod (3002/5434) so
+#   you can keep dev running while tests execute.
+name: job-tracker-test
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - '3001:3000'
+    env_file:
+      - .env.test
+    environment:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      PORT: '3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - test-network
+    command: sh -c "pnpm prisma migrate deploy && pnpm test:e2e"
+    restart: 'no' # one-shot: keep the exit code, never restart on failure
+
+  postgres:
+    image: postgres:16-alpine
+    env_file:
+      - .env.test
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata_test:/var/lib/postgresql/data
+    ports:
+      - '5433:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+    restart: 'no'
+
+volumes:
+  pgdata_test:
+
+networks:
+  test-network:

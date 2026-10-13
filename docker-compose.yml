@@ -1,32 +1,66 @@
+# ─── Production ─────────────────────────────────────────────────────────────────
+# Optimised multi-stage build + migrations on boot. This is the default file,
+# so plain `docker compose up --build` means production.
+#
+#   cp .env.prod.example .env.prod  # once: real secrets, never commit
+#   pnpm prod                       # = docker compose up --build -d
+#
+# How it works:
+# - `target: production` compiles TS in the builder stage, then copies only
+#   `dist` + prod node_modules into a slim image that runs as non-root
+#   `appuser` (see Dockerfile).
+# - `entrypoint.sh` runs `prisma migrate deploy` BEFORE `node dist/main.js`,
+#   so a new container never serves traffic on a stale schema.
+# - No bind mounts, no devDependencies, `restart: always` — if the host
+#   reboots or Node crashes, Postgres (healthy-gated) and the app come back.
+# - Host ports 3002/5434: change to 3000/5432 on a real server where only
+#   prod runs. They differ here so dev + test + prod can coexist locally.
+name: job-tracker-prod
+
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
+      target: production
     ports:
-      - "3000:3000"
+      - '3002:3000'
+    env_file:
+      - .env.prod
     environment:
-      DATABASE_URL: ${DATABASE_URL}
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      PORT: '3000'
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
-      - app-network
+      - prod-network
+    restart: always
 
   postgres:
     image: postgres:16-alpine
+    env_file:
+      - .env.prod
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata_prod:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - '5434:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
-      - app-network
+      - prod-network
+    restart: always
 
 volumes:
-  pgdata:
+  pgdata_prod:
 
 networks:
-  app-network:
+  prod-network:

@@ -1,0 +1,66 @@
+# ─── Development ────────────────────────────────────────────────────────────────
+# Hot-reload NestJS + local Postgres.
+#
+#   cp .env.dev.example .env.dev   # once: fill in secrets
+#   pnpm dev                       # = docker compose -f docker-compose.dev.yml up --build
+#
+# How it works:
+# - `target: development` builds only the dev stage (no `nest build`, fast).
+# - The bind mount `.:/app` overlays your host code so `nest start --watch`
+#   restarts on every save. `/app/node_modules` is an anonymous volume so the
+#   container keeps its own Linux binaries (your host may be macOS/Windows).
+# - `env_file` loads .env.dev; the explicit DATABASE_URL below is built from
+#   the same POSTGRES_* vars so app and db can never disagree.
+name: job-tracker-dev
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - '3000:3000'
+    env_file:
+      - .env.dev
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      PORT: '3000'
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - dev-network
+    command: pnpm start:dev
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    env_file:
+      - .env.dev
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+    ports:
+      - '5432:5432' # host:container — connect locally with psql/DBeaver
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dev-network
+    restart: unless-stopped
+
+volumes:
+  pgdata_dev:
+
+networks:
+  dev-network:
