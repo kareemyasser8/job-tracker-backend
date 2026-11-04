@@ -21,11 +21,11 @@ export const applicationSelect = {
   salaryCurrency: true,
   appliedAt: true,
   createdAt: true,
-  company: { select: { name: true } },
-  role: { select: { name: true } },
-  source: { select: { name: true } },
+  company: { select: { id: true, name: true } },
+  role: { select: { id: true, name: true } },
+  source: { select: { id: true, name: true } },
   technologies: {
-    select: { technology: { select: { name: true } } },
+    select: { technology: { select: { id: true, name: true } } },
     orderBy: { technology: { name: 'asc' } },
   },
   notes: {
@@ -53,10 +53,13 @@ export function toResponse(raw: RawApplication): ApplicationResponse {
     salaryCurrency: raw.salaryCurrency,
     appliedAt: raw.appliedAt,
     createdAt: raw.createdAt,
-    company: raw.company.name,
-    role: raw.role.name,
-    source: raw.source.name,
-    technologies: raw.technologies.map((t) => t.technology.name),
+    company: { id: raw.company.id, name: raw.company.name },
+    role: { id: raw.role.id, name: raw.role.name },
+    source: { id: raw.source.id, name: raw.source.name },
+    technologies: raw.technologies.map((t) => ({
+      id: t.technology.id,
+      name: t.technology.name,
+    })),
     notes: raw.notes.map((n) => n.content),
   };
 }
@@ -97,7 +100,10 @@ export class ApplicationService {
             select: { id: true },
           })
           .then((row) => {
-            if (!row) throw new NotFoundException(`Company with id ${refs.companyId} not found`);
+            if (!row)
+              throw new NotFoundException(
+                `Company with id ${refs.companyId} not found`,
+              );
           }),
       );
     }
@@ -113,7 +119,10 @@ export class ApplicationService {
             select: { id: true },
           })
           .then((row) => {
-            if (!row) throw new NotFoundException(`Role with id ${refs.roleId} not found`);
+            if (!row)
+              throw new NotFoundException(
+                `Role with id ${refs.roleId} not found`,
+              );
           }),
       );
     }
@@ -129,7 +138,10 @@ export class ApplicationService {
             select: { id: true },
           })
           .then((row) => {
-            if (!row) throw new NotFoundException(`Source with id ${refs.sourceId} not found`);
+            if (!row)
+              throw new NotFoundException(
+                `Source with id ${refs.sourceId} not found`,
+              );
           }),
       );
     }
@@ -147,7 +159,10 @@ export class ApplicationService {
               select: { id: true },
             })
             .then((row) => {
-              if (!row) throw new NotFoundException(`Technology with id ${tid} not found`);
+              if (!row)
+                throw new NotFoundException(
+                  `Technology with id ${tid} not found`,
+                );
             }),
         );
       }
@@ -282,7 +297,8 @@ export class ApplicationService {
           });
         });
 
-        if (!raw) throw new NotFoundException(`Application with id ${id} not found`);
+        if (!raw)
+          throw new NotFoundException(`Application with id ${id} not found`);
         return toResponse(raw as RawApplication);
       }
 

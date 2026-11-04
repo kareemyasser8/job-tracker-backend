@@ -6,6 +6,14 @@ import {
   WorkMode,
 } from '../../generated/prisma/enums.js';
 
+export class ApplicationTechnologyDto {
+  @ApiProperty({ format: 'uuid' })
+  id: string;
+
+  @ApiProperty()
+  name: string;
+}
+
 export class ApplicationResponse {
   @ApiProperty({
     description: 'Unique identifier of the application',
@@ -109,28 +117,34 @@ export class ApplicationResponse {
 
   @ApiProperty({
     description: 'Company name',
-    example: 'Acme Inc.',
+    example: { id: 'b3f1c2a4-5d6e-4f80-9a1b-2c3d4e5f6a7b', name: 'Acme Inc.' },
   })
-  company: string;
+  company: { id: string; name: string };
 
   @ApiProperty({
     description: 'Role name',
-    example: 'Backend Engineer',
+    example: {
+      id: 'b3f1c2a4-5d6e-4f80-9a1b-2c3d4e5f6a7b',
+      name: 'Backend Engineer',
+    },
   })
-  role: string;
+  role: { id: string; name: string };
 
   @ApiProperty({
     description: 'Source name',
-    example: 'LinkedIn',
+    example: { id: 'b3f1c2a4-5d6e-4f80-9a1b-2c3d4e5f6a7b', name: 'LinkedIn' },
   })
-  source: string;
+  source: { id: string; name: string };
 
   @ApiProperty({
-    description: 'Technology names associated with the application',
-    type: [String],
-    example: ['NestJS', 'PostgreSQL'],
+    description: 'Technologies associated with the application',
+    type: [ApplicationTechnologyDto],
+    example: [
+      { id: 'b3f1c2a4-5d6e-4f80-9a1b-2c3d4e5f6a7b', name: 'NestJS' },
+      { id: 'b3f1c2a4-5d6e-4f80-9a1b-2c3d4e5f6a7b', name: 'PostgreSQL' },
+    ],
   })
-  technologies: string[];
+  technologies: ApplicationTechnologyDto[];
 
   @ApiProperty({
     description: 'Note contents attached to the application',
