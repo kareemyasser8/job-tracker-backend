@@ -80,12 +80,12 @@ export class AuthService {
   async refresh(refreshToken: string) {
     let payload: { sub: string; email: string };
     try {
-      payload = await this.jwtService.verifyAsync<{ sub: string; email: string }>(
-        refreshToken,
-        {
-          secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-        },
-      );
+      payload = await this.jwtService.verifyAsync<{
+        sub: string;
+        email: string;
+      }>(refreshToken, {
+        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+      });
     } catch {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
@@ -132,5 +132,12 @@ export class AuthService {
     });
 
     return this.login(user.id, user.email);
+  }
+
+  async getProfile(userId: string) {
+    const existing = await this.userService.findOne(userId);
+    if (!existing) throw new ConflictException('User is no found');
+
+    return existing;
   }
 }
