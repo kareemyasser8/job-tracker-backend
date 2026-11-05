@@ -1,11 +1,19 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ApplicationInsightsSummary,
+  ApplicationStatusCount,
+  WeeklyApplicationCount,
+} from '../../common/entities/application-insights-response.entity.js';
 import { ApplicationResponse } from '../../common/entities/application-response.entity.js';
 import { Prisma } from '../../generated/prisma/client.js';
+import { ApplicationStatus } from '../../generated/prisma/enums.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { buildOrderBy, buildWhere } from './application-query.builder.js';
 import { CreateApplicationDto } from './dto/create-application.dto.js';
 import { FindApplicationsQueryDto } from './dto/find-applications-query.dto.js';
+import { InsightsQueryDto } from './dto/insights-query.dto.js';
 import { UpdateApplicationDto } from './dto/update-application.dto.js';
+import { WeeklyInsightsQueryDto } from './dto/weekly-insights-query.dto.js';
 
 export const applicationSelect = {
   id: true,
@@ -72,6 +80,87 @@ function handleNotFound(error: unknown, id: string): never {
     throw new NotFoundException(`Application with id ${id} not found`);
   }
   throw error;
+}
+
+const INSIGHTS_STATUS_ORDER: ApplicationStatus[] = [
+  ApplicationStatus.APPLIED,
+  ApplicationStatus.PHONE_SCREEN,
+  ApplicationStatus.INTERVIEWING,
+  ApplicationStatus.OFFER,
+  ApplicationStatus.REJECTED,
+  ApplicationStatus.GHOSTED,
+];
+
+const EXCLUDED_INSIGHTS_STATUSES: ApplicationStatus[] = [
+  ApplicationStatus.WISHLIST,
+  ApplicationStatus.ACCEPTED,
+];
+
+const RESPONSE_STATUSES: ApplicationStatus[] = [
+  ApplicationStatus.PHONE_SCREEN,
+  ApplicationStatus.INTERVIEWING,
+  ApplicationStatus.OFFER,
+  ApplicationStatus.REJECTED,
+];
+
+const INTERVIEW_STATUSES: ApplicationStatus[] = [
+  ApplicationStatus.INTERVIEWING,
+  ApplicationStatus.OFFER,
+];
+
+const OFFER_STATUSES: ApplicationStatus[] = [ApplicationStatus.OFFER];
+
+function buildInsightsWhere(
+  userId: string,
+  query: InsightsQueryDto,
+): Prisma.ApplicationWhereInput {
+  const where: Prisma.ApplicationWhereInput = {
+    userId,
+    status: { notIn: EXCLUDED_INSIGHTS_STATUSES },
+  };
+
+  if (query.from || query.to) {
+    where.appliedAt = {
+      ...(query.from ? { gte: new Date(query.from) } : {}),
+      ...(query.to ? { lte: new Date(query.to) } : {}),
+    };
+  }
+
+  return where;
+}
+
+function toPercentage(part: number, whole: number): number {
+  if (whole === 0) return 0;
+  return Math.round((part / whole) * 1000) / 10;
+}
+
+function startOfSundayWeekUtc(date: Date): Date {
+  const weekStart = new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+  );
+  weekStart.setUTCDate(weekStart.getUTCDate() - weekStart.getUTCDay());
+  return weekStart;
+}
+
+function addUtcDays(date: Date, days: number): Date {
+  const next = new Date(date);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next;
+}
+
+function getWeeklyWindow(query: WeeklyInsightsQueryDto): {
+  fromWeekStart: Date;
+  endExclusive: Date;
+} {
+  const weeks = query.weeks ?? 8;
+  const toWeekStart = query.to
+    ? startOfSundayWeekUtc(new Date(query.to))
+    : startOfSundayWeekUtc(new Date());
+  const fromWeekStart = query.from
+    ? startOfSundayWeekUtc(new Date(query.from))
+    : addUtcDays(toWeekStart, -(weeks - 1) * 7);
+
+  return { fromWeekStart, endExclusive: addUtcDays(toWeekStart, 7) };
 }
 
 @Injectable()
@@ -233,6 +322,98 @@ export class ApplicationService {
     const data = rawData.map(toResponse);
 
     return { total, data };
+  }
+
+  private async getStatusCounts(
+    query: InsightsQueryDto,
+    userId: string,
+  ): Promise<ApplicationStatusCount[]> {
+    const groups = await this.prismaService.application.groupBy({
+      by: ['status'],
+      where: buildInsightsWhere(userId, query),
+      _count: { _all: true },
+    });
+
+    const counts = new Map(
+      groups.map((group) => [group.status, group._count._all]),
+    );
+
+    return INSIGHTS_STATUS_ORDER.map((status) => ({
+      status,
+      count: counts.get(status) ?? 0,
+    }));
+  }
+
+  async getInsightsSummary(
+    query: InsightsQueryDto,
+    userId: string,
+  ): Promise<ApplicationInsightsSummary> {
+    const statusCounts = await this.getStatusCounts(query, userId);
+    const countOf = (statuses: ApplicationStatus[]) =>
+      statusCounts
+        .filter((entry) => statuses.includes(entry.status))
+        .reduce((total, entry) => total + entry.count, 0);
+
+    const applications = statusCounts.reduce(
+      (total, entry) => total + entry.count,
+      0,
+    );
+    const responses = countOf(RESPONSE_STATUSES);
+    const interviews = countOf(INTERVIEW_STATUSES);
+    const offers = countOf(OFFER_STATUSES);
+
+    return {
+      applications,
+      responses,
+      interviews,
+      offers,
+      responseRate: toPercentage(responses, applications),
+      interviewRate: toPercentage(interviews, applications),
+    };
+  }
+
+  async getInsightsStatus(
+    query: InsightsQueryDto,
+    userId: string,
+  ): Promise<ApplicationStatusCount[]> {
+    const statusCounts = await this.getStatusCounts(query, userId);
+    return statusCounts.filter((entry) => entry.count > 0);
+  }
+
+  async getWeeklyInsights(
+    query: WeeklyInsightsQueryDto,
+    userId: string,
+  ): Promise<WeeklyApplicationCount[]> {
+    const { fromWeekStart, endExclusive } = getWeeklyWindow(query);
+
+    const rows = await this.prismaService.application.findMany({
+      where: {
+        userId,
+        status: { notIn: EXCLUDED_INSIGHTS_STATUSES },
+        appliedAt: { gte: fromWeekStart, lt: endExclusive },
+      },
+      select: { appliedAt: true },
+    });
+
+    const counts = new Map<string, number>();
+    for (const row of rows) {
+      const weekStart = startOfSundayWeekUtc(row.appliedAt)
+        .toISOString()
+        .slice(0, 10);
+      counts.set(weekStart, (counts.get(weekStart) ?? 0) + 1);
+    }
+
+    const result: WeeklyApplicationCount[] = [];
+    for (
+      let weekStart = fromWeekStart;
+      weekStart < endExclusive;
+      weekStart = addUtcDays(weekStart, 7)
+    ) {
+      const key = weekStart.toISOString().slice(0, 10);
+      result.push({ weekStart: key, count: counts.get(key) ?? 0 });
+    }
+
+    return result;
   }
 
   async findOne(id: string, userId: string): Promise<ApplicationResponse> {

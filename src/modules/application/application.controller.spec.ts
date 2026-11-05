@@ -47,7 +47,15 @@ describe('ApplicationController', () => {
         {
           provide: PrismaService,
           useValue: {
-            application: { create: vi.fn(), findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn(), delete: vi.fn(), count: vi.fn() },
+            application: {
+              create: vi.fn(),
+              findMany: vi.fn(),
+              findFirst: vi.fn(),
+              findUnique: vi.fn(),
+              update: vi.fn(),
+              delete: vi.fn(),
+              count: vi.fn(),
+            },
             company: { findFirst: vi.fn() },
             role: { findFirst: vi.fn() },
             source: { findFirst: vi.fn() },
@@ -68,15 +76,32 @@ describe('ApplicationController', () => {
 
   describe('findAll', () => {
     it('should return paginated applications', async () => {
-      vi.spyOn(service, 'findAll').mockResolvedValue({ total: 1, data: [mockApplication] });
-      const result = await controller.findAll({ page: 1, limit: 10 } as any, USER_ID);
-      expect(service.findAll).toHaveBeenCalledWith({ page: 1, limit: 10 }, USER_ID);
+      vi.spyOn(service, 'findAll').mockResolvedValue({
+        total: 1,
+        data: [mockApplication],
+      });
+      const result = await controller.findAll(
+        { page: 1, limit: 10 } as any,
+        USER_ID,
+      );
+      expect(service.findAll).toHaveBeenCalledWith(
+        { page: 1, limit: 10 },
+        USER_ID,
+      );
       expect(result).toEqual({ total: 1, data: [mockApplication] });
     });
 
     it('should forward query DTO to service with userId', async () => {
-      vi.spyOn(service, 'findAll').mockResolvedValue({ total: 1, data: [mockApplication] });
-      const query = { page: 1, limit: 10, status: [ApplicationStatus.APPLIED], search: 'engineer' } as any;
+      vi.spyOn(service, 'findAll').mockResolvedValue({
+        total: 1,
+        data: [mockApplication],
+      });
+      const query = {
+        page: 1,
+        limit: 10,
+        status: [ApplicationStatus.APPLIED],
+        search: 'engineer',
+      } as any;
       const result = await controller.findAll(query, USER_ID);
       expect(service.findAll).toHaveBeenCalledWith(query, USER_ID);
       expect(result).toEqual({ total: 1, data: [mockApplication] });
@@ -84,16 +109,28 @@ describe('ApplicationController', () => {
 
     it('should return an empty page when there are no applications', async () => {
       vi.spyOn(service, 'findAll').mockResolvedValue({ total: 0, data: [] });
-      const result = await controller.findAll({ page: 1, limit: 10 } as any, USER_ID);
+      const result = await controller.findAll(
+        { page: 1, limit: 10 } as any,
+        USER_ID,
+      );
       expect(result).toEqual({ total: 0, data: [] });
     });
   });
 
   describe('getApplications (alias)', () => {
     it('should delegate to findAll', async () => {
-      vi.spyOn(service, 'findAll').mockResolvedValue({ total: 1, data: [mockApplication] });
-      const result = await controller.getApplications({ page: 1, limit: 10 } as any, USER_ID);
-      expect(service.findAll).toHaveBeenCalledWith({ page: 1, limit: 10 }, USER_ID);
+      vi.spyOn(service, 'findAll').mockResolvedValue({
+        total: 1,
+        data: [mockApplication],
+      });
+      const result = await controller.getApplications(
+        { page: 1, limit: 10 } as any,
+        USER_ID,
+      );
+      expect(service.findAll).toHaveBeenCalledWith(
+        { page: 1, limit: 10 },
+        USER_ID,
+      );
       expect(result).toEqual({ total: 1, data: [mockApplication] });
     });
   });
@@ -101,14 +138,21 @@ describe('ApplicationController', () => {
   describe('getApplication', () => {
     it('should return an application by id', async () => {
       vi.spyOn(service, 'findOne').mockResolvedValue(mockApplication);
-      const result = await controller.getApplication(mockApplication.id, USER_ID);
+      const result = await controller.getApplication(
+        mockApplication.id,
+        USER_ID,
+      );
       expect(service.findOne).toHaveBeenCalledWith(mockApplication.id, USER_ID);
       expect(result).toEqual(mockApplication);
     });
 
     it('should propagate NotFoundException', async () => {
-      vi.spyOn(service, 'findOne').mockRejectedValue(new NotFoundException('Application with id 999 not found'));
-      await expect(controller.getApplication('999', USER_ID)).rejects.toThrow(NotFoundException);
+      vi.spyOn(service, 'findOne').mockRejectedValue(
+        new NotFoundException('Application with id 999 not found'),
+      );
+      await expect(controller.getApplication('999', USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -134,28 +178,95 @@ describe('ApplicationController', () => {
       const dto = { title: 'Staff Engineer' };
       const updated = { ...mockApplication, title: 'Staff Engineer' };
       vi.spyOn(service, 'updateOne').mockResolvedValue(updated);
-      const result = await controller.updateApplication(mockApplication.id, dto as any, USER_ID);
-      expect(service.updateOne).toHaveBeenCalledWith(mockApplication.id, dto, USER_ID);
+      const result = await controller.updateApplication(
+        mockApplication.id,
+        dto as any,
+        USER_ID,
+      );
+      expect(service.updateOne).toHaveBeenCalledWith(
+        mockApplication.id,
+        dto,
+        USER_ID,
+      );
       expect(result).toEqual(updated);
     });
 
     it('should propagate NotFoundException on update for missing id', async () => {
-      vi.spyOn(service, 'updateOne').mockRejectedValue(new NotFoundException('Application with id 999 not found'));
-      await expect(controller.updateApplication('999', { title: 'x' } as any, USER_ID)).rejects.toThrow(NotFoundException);
+      vi.spyOn(service, 'updateOne').mockRejectedValue(
+        new NotFoundException('Application with id 999 not found'),
+      );
+      await expect(
+        controller.updateApplication('999', { title: 'x' } as any, USER_ID),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('insights', () => {
+    const summary = {
+      applications: 8,
+      responses: 5,
+      interviews: 3,
+      offers: 1,
+      responseRate: 62.5,
+      interviewRate: 37.5,
+    };
+
+    it('should return the summary for the current user', async () => {
+      vi.spyOn(service, 'getInsightsSummary').mockResolvedValue(summary);
+      const query = { from: '2026-09-01', to: '2026-10-01' };
+
+      const result = await controller.getInsightsSummary(query, USER_ID);
+
+      expect(service.getInsightsSummary).toHaveBeenCalledWith(query, USER_ID);
+      expect(result).toEqual(summary);
+    });
+
+    it('should return status counts for the current user', async () => {
+      const statuses = [
+        { status: ApplicationStatus.APPLIED, count: 2 },
+        { status: ApplicationStatus.OFFER, count: 1 },
+      ];
+      vi.spyOn(service, 'getInsightsStatus').mockResolvedValue(statuses);
+
+      const result = await controller.getInsightsStatus({}, USER_ID);
+
+      expect(service.getInsightsStatus).toHaveBeenCalledWith({}, USER_ID);
+      expect(result).toEqual(statuses);
+    });
+
+    it('should return weekly counts for the current user', async () => {
+      const weekly = [{ weekStart: '2026-09-13', count: 1 }];
+      vi.spyOn(service, 'getWeeklyInsights').mockResolvedValue(weekly);
+      const query = { to: '2026-09-26', weeks: 2 };
+
+      const result = await controller.getWeeklyInsights(query, USER_ID);
+
+      expect(service.getWeeklyInsights).toHaveBeenCalledWith(query, USER_ID);
+      expect(result).toEqual(weekly);
     });
   });
 
   describe('deleteApplication', () => {
     it('should delete an application', async () => {
       vi.spyOn(service, 'deleteOne').mockResolvedValue(undefined);
-      const result = await controller.deleteApplication(mockApplication.id, USER_ID);
-      expect(service.deleteOne).toHaveBeenCalledWith(mockApplication.id, USER_ID);
+      const result = await controller.deleteApplication(
+        mockApplication.id,
+        USER_ID,
+      );
+      expect(service.deleteOne).toHaveBeenCalledWith(
+        mockApplication.id,
+        USER_ID,
+      );
       expect(result).toBeUndefined();
     });
 
     it('should propagate NotFoundException on delete', async () => {
-      vi.spyOn(service, 'deleteOne').mockRejectedValue(new NotFoundException('Application with id 999 not found'));
-      await expect(controller.deleteApplication('999', USER_ID)).rejects.toThrow(NotFoundException);
+      vi.spyOn(service, 'deleteOne').mockRejectedValue(
+        new NotFoundException('Application with id 999 not found'),
+      );
+      await expect(
+        controller.deleteApplication('999', USER_ID),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

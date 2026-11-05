@@ -53,6 +53,7 @@ describe('ApplicationService', () => {
       findUnique: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+      groupBy: vi.fn(),
     },
     company: { findFirst: vi.fn() },
     role: { findFirst: vi.fn() },
@@ -78,7 +79,9 @@ describe('ApplicationService', () => {
             update: vi.fn().mockResolvedValue({ id: 'app-1' }),
             findFirst: vi.fn().mockResolvedValue(makeRaw()),
           },
-          applicationTechnology: { createMany: vi.fn().mockResolvedValue({ count: 1 }) },
+          applicationTechnology: {
+            createMany: vi.fn().mockResolvedValue({ count: 1 }),
+          },
         };
         return cb(tx);
       }
@@ -162,7 +165,9 @@ describe('ApplicationService', () => {
         technologyIds: [techId],
       };
 
-      const raw = makeRaw({ technologies: [{ technology: { name: 'TypeScript' } }] });
+      const raw = makeRaw({
+        technologies: [{ technology: { name: 'TypeScript' } }],
+      });
       prismaService.application.create.mockResolvedValue(raw);
 
       const result = await service.createApplication(createDto, USER_ID);
@@ -184,8 +189,12 @@ describe('ApplicationService', () => {
         workMode: WorkMode.REMOTE,
         appliedAt: '2026-09-14T10:55:11.715Z',
       };
-      await expect(service.createApplication(dto, USER_ID)).rejects.toThrow(NotFoundException);
-      await expect(service.createApplication(dto, USER_ID)).rejects.toThrow('Company with id bad-company not found');
+      await expect(service.createApplication(dto, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.createApplication(dto, USER_ID)).rejects.toThrow(
+        'Company with id bad-company not found',
+      );
     });
 
     it('should throw NotFound if technology not visible', async () => {
@@ -199,7 +208,9 @@ describe('ApplicationService', () => {
         appliedAt: '2026-09-14T10:55:11.715Z',
         technologyIds: ['bad-tech'],
       };
-      await expect(service.createApplication(dto, USER_ID)).rejects.toThrow('Technology with id bad-tech not found');
+      await expect(service.createApplication(dto, USER_ID)).rejects.toThrow(
+        'Technology with id bad-tech not found',
+      );
     });
 
     it('should deduplicate technologyIds', async () => {
@@ -214,7 +225,12 @@ describe('ApplicationService', () => {
         appliedAt: '2026-09-14T10:55:11.715Z',
         technologyIds: [techId, techId, otherId],
       };
-      const raw = makeRaw({ technologies: [{ technology: { name: 'NestJS' } }, { technology: { name: 'PostgreSQL' } }] });
+      const raw = makeRaw({
+        technologies: [
+          { technology: { name: 'NestJS' } },
+          { technology: { name: 'PostgreSQL' } },
+        ],
+      });
       prismaService.application.create.mockResolvedValue(raw);
       await service.createApplication(createDto, USER_ID);
       const callData = prismaService.application.create.mock.calls[0][0].data;
@@ -237,7 +253,9 @@ describe('ApplicationService', () => {
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         select: applicationSelect,
       });
-      expect(prismaService.application.count).toHaveBeenCalledWith({ where: { userId: USER_ID } });
+      expect(prismaService.application.count).toHaveBeenCalledWith({
+        where: { userId: USER_ID },
+      });
       expect(result).toEqual({ total: 0, data: [] });
     });
 
@@ -254,7 +272,9 @@ describe('ApplicationService', () => {
 
       const where = prismaService.application.findMany.mock.calls[0][0].where;
       expect(where.userId).toBe(USER_ID);
-      expect(where.AND).toEqual([{ status: { in: [ApplicationStatus.APPLIED] } }]);
+      expect(where.AND).toEqual([
+        { status: { in: [ApplicationStatus.APPLIED] } },
+      ]);
     });
   });
 
@@ -263,23 +283,38 @@ describe('ApplicationService', () => {
       const raw = makeRaw({ id: 'app-1' });
       prismaService.application.findFirst.mockResolvedValue(raw);
       const result = await service.findOne('app-1', USER_ID);
-      expect(prismaService.application.findFirst).toHaveBeenCalledWith({ where: { id: 'app-1', userId: USER_ID }, select: applicationSelect });
+      expect(prismaService.application.findFirst).toHaveBeenCalledWith({
+        where: { id: 'app-1', userId: USER_ID },
+        select: applicationSelect,
+      });
       expect(result.id).toBe('app-1');
     });
 
     it('should throw NotFound for other user (404)', async () => {
       prismaService.application.findFirst.mockResolvedValue(null);
-      await expect(service.findOne('app-1', OTHER_USER_ID)).rejects.toThrow(new NotFoundException('Application with id app-1 not found'));
+      await expect(service.findOne('app-1', OTHER_USER_ID)).rejects.toThrow(
+        new NotFoundException('Application with id app-1 not found'),
+      );
     });
   });
 
   describe('updateOne', () => {
     it('should update without touching technologies when not provided', async () => {
       prismaService.application.findFirst.mockResolvedValue({ id: 'app-1' });
-      const raw = makeRaw({ title: 'Updated Title', status: ApplicationStatus.OFFER });
+      const raw = makeRaw({
+        title: 'Updated Title',
+        status: ApplicationStatus.OFFER,
+      });
       prismaService.application.update.mockResolvedValue(raw);
 
-      const result = await service.updateOne('app-1', { title: 'Updated Title', status: ApplicationStatus.OFFER } as UpdateApplicationDto, USER_ID);
+      const result = await service.updateOne(
+        'app-1',
+        {
+          title: 'Updated Title',
+          status: ApplicationStatus.OFFER,
+        } as UpdateApplicationDto,
+        USER_ID,
+      );
 
       expect(prismaService.application.update).toHaveBeenCalledWith({
         where: { id: 'app-1' },
@@ -292,7 +327,9 @@ describe('ApplicationService', () => {
     it('should replace technologies inside transaction when provided', async () => {
       prismaService.application.findFirst.mockResolvedValue({ id: 'app-1' });
       const techId = 'b3f1c2a4-5d6e-4f80-9a1b-2c3d4e5f6a7b';
-      const raw = makeRaw({ technologies: [{ technology: { name: 'TypeScript' } }] });
+      const raw = makeRaw({
+        technologies: [{ technology: { name: 'TypeScript' } }],
+      });
 
       prismaService.$transaction.mockImplementation(async (cb: any) => {
         const tx: any = {
@@ -300,7 +337,9 @@ describe('ApplicationService', () => {
             update: vi.fn().mockResolvedValue({ id: 'app-1' }),
             findFirst: vi.fn().mockResolvedValue(raw),
           },
-          applicationTechnology: { createMany: vi.fn().mockResolvedValue({ count: 1 }) },
+          applicationTechnology: {
+            createMany: vi.fn().mockResolvedValue({ count: 1 }),
+          },
         };
         const res = await cb(tx);
         expect(tx.application.update).toHaveBeenCalledWith({
@@ -311,27 +350,207 @@ describe('ApplicationService', () => {
         return res;
       });
 
-      const result = await service.updateOne('app-1', { title: 'Partial', technologyIds: [techId] } as UpdateApplicationDto, USER_ID);
+      const result = await service.updateOne(
+        'app-1',
+        { title: 'Partial', technologyIds: [techId] } as UpdateApplicationDto,
+        USER_ID,
+      );
       expect(result.technologies).toEqual(['TypeScript']);
       expect(prismaService.$transaction).toHaveBeenCalled();
     });
 
     it('should throw NotFound if application not owned', async () => {
       prismaService.application.findFirst.mockResolvedValue(null);
-      await expect(service.updateOne('app-999', { title: 'x' } as UpdateApplicationDto, USER_ID)).rejects.toThrow(NotFoundException);
+      await expect(
+        service.updateOne(
+          'app-999',
+          { title: 'x' } as UpdateApplicationDto,
+          USER_ID,
+        ),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw NotFound if referenced company not visible on update', async () => {
       prismaService.application.findFirst.mockResolvedValue({ id: 'app-1' });
       prismaService.company.findFirst.mockResolvedValue(null);
-      await expect(service.updateOne('app-1', { companyId: 'bad' } as UpdateApplicationDto, USER_ID)).rejects.toThrow('Company with id bad not found');
+      await expect(
+        service.updateOne(
+          'app-1',
+          { companyId: 'bad' } as UpdateApplicationDto,
+          USER_ID,
+        ),
+      ).rejects.toThrow('Company with id bad not found');
     });
 
     it('should throw NotFoundException on P2025', async () => {
       prismaService.application.findFirst.mockResolvedValue({ id: 'app-1' });
-      const error = new Prisma.PrismaClientKnownRequestError('Record not found', { code: 'P2025', clientVersion: '7.10.0' });
+      const error = new Prisma.PrismaClientKnownRequestError(
+        'Record not found',
+        { code: 'P2025', clientVersion: '7.10.0' },
+      );
       prismaService.application.update.mockRejectedValue(error);
-      await expect(service.updateOne('app-999', { title: 'x' } as UpdateApplicationDto, USER_ID)).rejects.toThrow(NotFoundException);
+      await expect(
+        service.updateOne(
+          'app-999',
+          { title: 'x' } as UpdateApplicationDto,
+          USER_ID,
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('insights', () => {
+    const excludedStatuses = {
+      notIn: [ApplicationStatus.WISHLIST, ApplicationStatus.ACCEPTED],
+    };
+
+    describe('getInsightsSummary', () => {
+      it('should compute metrics from status counts', async () => {
+        prismaService.application.groupBy.mockResolvedValue([
+          { status: ApplicationStatus.APPLIED, _count: { _all: 2 } },
+          { status: ApplicationStatus.PHONE_SCREEN, _count: { _all: 1 } },
+          { status: ApplicationStatus.INTERVIEWING, _count: { _all: 2 } },
+          { status: ApplicationStatus.OFFER, _count: { _all: 1 } },
+          { status: ApplicationStatus.REJECTED, _count: { _all: 1 } },
+          { status: ApplicationStatus.GHOSTED, _count: { _all: 1 } },
+        ]);
+
+        const result = await service.getInsightsSummary({}, USER_ID);
+
+        expect(prismaService.application.groupBy).toHaveBeenCalledWith({
+          by: ['status'],
+          where: { userId: USER_ID, status: excludedStatuses },
+          _count: { _all: true },
+        });
+        expect(result).toEqual({
+          applications: 8,
+          responses: 5,
+          interviews: 3,
+          offers: 1,
+          responseRate: 62.5,
+          interviewRate: 37.5,
+        });
+      });
+
+      it('should return zero rates when there are no applications', async () => {
+        prismaService.application.groupBy.mockResolvedValue([]);
+
+        const result = await service.getInsightsSummary({}, USER_ID);
+
+        expect(result).toEqual({
+          applications: 0,
+          responses: 0,
+          interviews: 0,
+          offers: 0,
+          responseRate: 0,
+          interviewRate: 0,
+        });
+      });
+
+      it('should forward the appliedAt range', async () => {
+        prismaService.application.groupBy.mockResolvedValue([]);
+
+        await service.getInsightsSummary(
+          { from: '2026-09-01', to: '2026-10-01' },
+          USER_ID,
+        );
+
+        expect(prismaService.application.groupBy).toHaveBeenCalledWith({
+          by: ['status'],
+          where: {
+            userId: USER_ID,
+            status: excludedStatuses,
+            appliedAt: {
+              gte: new Date('2026-09-01'),
+              lte: new Date('2026-10-01'),
+            },
+          },
+          _count: { _all: true },
+        });
+      });
+    });
+
+    describe('getInsightsStatus', () => {
+      it('should return non-zero counts in fixed legend order', async () => {
+        prismaService.application.groupBy.mockResolvedValue([
+          { status: ApplicationStatus.GHOSTED, _count: { _all: 1 } },
+          { status: ApplicationStatus.APPLIED, _count: { _all: 2 } },
+          { status: ApplicationStatus.OFFER, _count: { _all: 1 } },
+        ]);
+
+        const result = await service.getInsightsStatus({}, USER_ID);
+
+        expect(result).toEqual([
+          { status: ApplicationStatus.APPLIED, count: 2 },
+          { status: ApplicationStatus.OFFER, count: 1 },
+          { status: ApplicationStatus.GHOSTED, count: 1 },
+        ]);
+      });
+
+      it('should return an empty array when there are no applications', async () => {
+        prismaService.application.groupBy.mockResolvedValue([]);
+
+        await expect(service.getInsightsStatus({}, USER_ID)).resolves.toEqual(
+          [],
+        );
+      });
+    });
+
+    describe('getWeeklyInsights', () => {
+      it('should bucket by Sunday-start weeks and zero-fill gaps', async () => {
+        prismaService.application.findMany.mockResolvedValue([
+          { appliedAt: new Date('2026-09-14T10:00:00.000Z') },
+          { appliedAt: new Date('2026-09-15T10:00:00.000Z') },
+          { appliedAt: new Date('2026-09-29T10:00:00.000Z') },
+        ]);
+
+        const result = await service.getWeeklyInsights(
+          { from: '2026-09-13', to: '2026-09-28', weeks: 8 },
+          USER_ID,
+        );
+
+        expect(prismaService.application.findMany).toHaveBeenCalledWith({
+          where: {
+            userId: USER_ID,
+            status: excludedStatuses,
+            appliedAt: {
+              gte: new Date('2026-09-13T00:00:00.000Z'),
+              lt: new Date('2026-10-04T00:00:00.000Z'),
+            },
+          },
+          select: { appliedAt: true },
+        });
+        expect(result).toEqual([
+          { weekStart: '2026-09-13', count: 2 },
+          { weekStart: '2026-09-20', count: 0 },
+          { weekStart: '2026-09-27', count: 1 },
+        ]);
+      });
+
+      it('should use the last N weeks when no from is provided', async () => {
+        prismaService.application.findMany.mockResolvedValue([]);
+
+        const result = await service.getWeeklyInsights(
+          { to: '2026-09-26', weeks: 2 },
+          USER_ID,
+        );
+
+        expect(result).toEqual([
+          { weekStart: '2026-09-13', count: 0 },
+          { weekStart: '2026-09-20', count: 0 },
+        ]);
+      });
+
+      it('should return an empty array when the range is inverted', async () => {
+        prismaService.application.findMany.mockResolvedValue([]);
+
+        const result = await service.getWeeklyInsights(
+          { from: '2026-10-01', to: '2026-09-01' },
+          USER_ID,
+        );
+
+        expect(result).toEqual([]);
+      });
     });
   });
 
@@ -340,19 +559,28 @@ describe('ApplicationService', () => {
       prismaService.application.findFirst.mockResolvedValue({ id: 'app-1' });
       prismaService.application.delete.mockResolvedValue({});
       await service.deleteOne('app-1', USER_ID);
-      expect(prismaService.application.delete).toHaveBeenCalledWith({ where: { id: 'app-1' } });
+      expect(prismaService.application.delete).toHaveBeenCalledWith({
+        where: { id: 'app-1' },
+      });
     });
 
     it('should throw NotFound for other user', async () => {
       prismaService.application.findFirst.mockResolvedValue(null);
-      await expect(service.deleteOne('app-1', OTHER_USER_ID)).rejects.toThrow(NotFoundException);
+      await expect(service.deleteOne('app-1', OTHER_USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw NotFoundException on P2025', async () => {
       prismaService.application.findFirst.mockResolvedValue({ id: 'app-1' });
-      const error = new Prisma.PrismaClientKnownRequestError('Record not found', { code: 'P2025', clientVersion: '7.10.0' });
+      const error = new Prisma.PrismaClientKnownRequestError(
+        'Record not found',
+        { code: 'P2025', clientVersion: '7.10.0' },
+      );
       prismaService.application.delete.mockRejectedValue(error);
-      await expect(service.deleteOne('app-999', USER_ID)).rejects.toThrow(NotFoundException);
+      await expect(service.deleteOne('app-999', USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

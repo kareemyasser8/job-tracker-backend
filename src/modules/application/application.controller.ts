@@ -20,11 +20,18 @@ import {
 } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { PaginatedResponse } from '../../common/dto/paginated-response.dto.js';
+import {
+  ApplicationInsightsSummary,
+  ApplicationStatusCount,
+  WeeklyApplicationCount,
+} from '../../common/entities/application-insights-response.entity.js';
 import { ApplicationResponse } from '../../common/entities/application-response.entity.js';
 import { ApplicationService } from './application.service.js';
 import { CreateApplicationDto } from './dto/create-application.dto.js';
 import { FindApplicationsQueryDto } from './dto/find-applications-query.dto.js';
+import { InsightsQueryDto } from './dto/insights-query.dto.js';
 import { UpdateApplicationDto } from './dto/update-application.dto.js';
+import { WeeklyInsightsQueryDto } from './dto/weekly-insights-query.dto.js';
 
 @ApiTags('Applications')
 @Controller('applications')
@@ -52,6 +59,45 @@ export class ApplicationController {
     return this.findAll(query, userId);
   }
 
+  @Get('insights/summary')
+  @ApiOperation({ summary: 'Get application insights summary' })
+  @ApiOkResponse({
+    description: 'Aggregated application metrics',
+    type: ApplicationInsightsSummary,
+  })
+  getInsightsSummary(
+    @Query() query: InsightsQueryDto,
+    @CurrentUser('userId') userId: string,
+  ): Promise<ApplicationInsightsSummary> {
+    return this.applicationService.getInsightsSummary(query, userId);
+  }
+
+  @Get('insights/status')
+  @ApiOperation({ summary: 'Get application counts grouped by status' })
+  @ApiOkResponse({
+    description: 'Application counts by status',
+    type: [ApplicationStatusCount],
+  })
+  getInsightsStatus(
+    @Query() query: InsightsQueryDto,
+    @CurrentUser('userId') userId: string,
+  ): Promise<ApplicationStatusCount[]> {
+    return this.applicationService.getInsightsStatus(query, userId);
+  }
+
+  @Get('insights/weekly')
+  @ApiOperation({ summary: 'Get application counts per week' })
+  @ApiOkResponse({
+    description: 'Application counts grouped by Sunday-start weeks',
+    type: [WeeklyApplicationCount],
+  })
+  getWeeklyInsights(
+    @Query() query: WeeklyInsightsQueryDto,
+    @CurrentUser('userId') userId: string,
+  ): Promise<WeeklyApplicationCount[]> {
+    return this.applicationService.getWeeklyInsights(query, userId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get an application by id' })
   @ApiParam({ name: 'id', description: 'Application ID' })
@@ -73,12 +119,18 @@ export class ApplicationController {
     description: 'Application created',
     type: ApplicationResponse,
   })
-  @ApiResponse({ status: 404, description: 'Company/Role/Source/Technology not found or not visible' })
+  @ApiResponse({
+    status: 404,
+    description: 'Company/Role/Source/Technology not found or not visible',
+  })
   createApplication(
     @Body() createApplicationDto: CreateApplicationDto,
     @CurrentUser('userId') userId: string,
   ): Promise<ApplicationResponse> {
-    return this.applicationService.createApplication(createApplicationDto, userId);
+    return this.applicationService.createApplication(
+      createApplicationDto,
+      userId,
+    );
   }
 
   @Put(':id')
@@ -88,7 +140,10 @@ export class ApplicationController {
     description: 'Application updated',
     type: ApplicationResponse,
   })
-  @ApiResponse({ status: 404, description: 'Application not found or referenced entity not visible' })
+  @ApiResponse({
+    status: 404,
+    description: 'Application not found or referenced entity not visible',
+  })
   updateApplication(
     @Param('id') id: string,
     @Body() updateApplicationDto: UpdateApplicationDto,
